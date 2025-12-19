@@ -17,6 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -43,6 +45,7 @@ const initialMessages: Message[] = [
 ];
 
 export default function Chatbot() {
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>(() => {
     const saved = localStorage.getItem("chatHistory");
     return saved ? JSON.parse(saved) : initialMessages;
@@ -64,30 +67,6 @@ export default function Chatbot() {
     localStorage.setItem("chatHistory", JSON.stringify(messages));
   }, [messages]);
 
-  const generateResponse = async (userMessage: string): Promise<string> => {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    const responses: Record<string, string> = {
-      fitness: "Great question about fitness! Here are some tips:\n\n1. **Start with compound exercises** - Squats, deadlifts, and bench press work multiple muscle groups.\n\n2. **Progressive overload** - Gradually increase weight or reps to build strength.\n\n3. **Rest is crucial** - Allow 48 hours between training the same muscle group.\n\nWould you like me to create a specific workout plan for you?",
-      nutrition: "Nutrition is key to achieving your health goals! Here's what I recommend:\n\n• **Protein**: Aim for 1.6-2.2g per kg of body weight\n• **Complex carbs**: Choose whole grains, fruits, and vegetables\n• **Healthy fats**: Include avocados, nuts, and olive oil\n• **Hydration**: Drink at least 2-3 liters of water daily\n\nWant me to suggest a meal plan based on your goals?",
-      skincare: "Taking care of your skin is essential! Here's a simple routine:\n\n**Morning:**\n- Gentle cleanser\n- Vitamin C serum\n- Moisturizer with SPF\n\n**Evening:**\n- Double cleanse\n- Treatment (retinol/AHA)\n- Night cream\n\nConsistency is key! Would you like specific product recommendations?",
-      mental: "Mental health is just as important as physical health. Here are some practices:\n\n🧘 **Mindfulness**: Even 5 minutes of meditation can help\n📝 **Journaling**: Write down your thoughts and gratitude\n😴 **Sleep**: Aim for 7-9 hours of quality sleep\n🚶 **Movement**: Regular exercise boosts mood\n\nRemember, it's okay to seek professional help when needed.",
-      default: "That's a great question! While I provide general wellness guidance, remember that personalized advice from healthcare professionals is always recommended for specific concerns.\n\nIs there a particular area you'd like to focus on? I can help with:\n- Fitness and exercise\n- Nutrition and diet\n- Skincare routines\n- Mental wellness\n- General health tips",
-    };
-
-    const lowerMessage = userMessage.toLowerCase();
-    if (lowerMessage.includes("fitness") || lowerMessage.includes("workout") || lowerMessage.includes("exercise")) {
-      return responses.fitness;
-    } else if (lowerMessage.includes("nutrition") || lowerMessage.includes("diet") || lowerMessage.includes("food") || lowerMessage.includes("eat")) {
-      return responses.nutrition;
-    } else if (lowerMessage.includes("skin") || lowerMessage.includes("face") || lowerMessage.includes("acne")) {
-      return responses.skincare;
-    } else if (lowerMessage.includes("mental") || lowerMessage.includes("stress") || lowerMessage.includes("anxiety") || lowerMessage.includes("mood")) {
-      return responses.mental;
-    }
-    return responses.default;
-  };
-
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -98,21 +77,53 @@ export default function Chatbot() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
     setIsTyping(true);
 
-    const response = await generateResponse(input);
+    try {
+      // Prepare messages for API (exclude the welcome message for cleaner context)
+      const apiMessages = updatedMessages
+        .filter(msg => msg.id !== 'welcome')
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        }));
 
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: response,
-      timestamp: new Date(),
-    };
+      const { data, error } = await supabase.functions.invoke('wellness-chat', {
+        body: {
+          messages: apiMessages,
+          userName: userName || undefined,
+        },
+      });
 
-    setMessages((prev) => [...prev, assistantMessage]);
-    setIsTyping(false);
+      if (error) {
+        throw error;
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      toast({
+        title: "Message Failed",
+        description: error instanceof Error ? error.message : "Failed to get response. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const handleNewConversation = () => {

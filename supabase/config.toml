@@ -1,0 +1,7 @@
+project_id = "fukvywdrfshpanknzlrj"
+
+[functions.health-consultant]
+verify_jwt = false
+
+[functions.wellness-chat]
+verify_jwt = false

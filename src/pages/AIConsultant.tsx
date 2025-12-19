@@ -32,6 +32,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const focusAreas = [
   { id: "fitness", label: "Fitness", icon: Activity },
@@ -77,48 +78,41 @@ export default function AIConsultant() {
     }
 
     setIsLoading(true);
+    setResult(null);
     
-    // Simulate AI response
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    const mockResponse = `## Personalized Health Recommendations
+    try {
+      const { data, error } = await supabase.functions.invoke('health-consultant', {
+        body: {
+          profile,
+          query,
+          focusArea,
+        },
+      });
 
-Based on your profile and query about **${focusArea}**, here are my recommendations:
+      if (error) {
+        throw error;
+      }
 
-### Key Insights
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
-1. **Start with realistic goals** - Given your current fitness level, I recommend starting with 3-4 sessions per week.
-
-2. **Nutrition Focus** - Ensure you're consuming adequate protein (1.6-2.2g per kg of body weight) to support your goals.
-
-3. **Recovery is Essential** - Don't underestimate the importance of:
-   - 7-9 hours of quality sleep
-   - Active recovery days
-   - Proper hydration (2-3 liters daily)
-
-### Weekly Action Plan
-
-| Day | Activity | Duration |
-|-----|----------|----------|
-| Monday | Strength Training | 45 min |
-| Tuesday | Light Cardio | 30 min |
-| Wednesday | HIIT Workout | 25 min |
-| Thursday | Active Recovery | 20 min |
-| Friday | Strength Training | 45 min |
-
-### Important Notes
-
-> Remember to listen to your body and adjust intensity as needed. Progress takes time, so be patient and consistent.
-
-**Disclaimer**: These recommendations are for educational purposes only. Please consult with a healthcare professional before making significant changes to your routine.`;
-
-    setResult(mockResponse);
-    setIsLoading(false);
-    
-    toast({
-      title: "Consultation Complete",
-      description: "Your personalized recommendations are ready.",
-    });
+      setResult(data.result);
+      
+      toast({
+        title: "Consultation Complete",
+        description: "Your personalized recommendations are ready.",
+      });
+    } catch (error) {
+      console.error('Consultation error:', error);
+      toast({
+        title: "Consultation Failed",
+        description: error instanceof Error ? error.message : "Failed to get AI consultation. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = () => {
