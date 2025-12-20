@@ -41,6 +41,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Workout {
   id: string;
@@ -128,48 +129,61 @@ export default function FitnessTracker() {
 
   const handleGeneratePlan = async () => {
     setIsGeneratingPlan(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('personal-health-hub', {
+        body: {
+          fitness_level: 'intermediate',
+          primary_goal: 'Build endurance and strength',
+          weight_goal: '',
+          workouts: workouts.map(w => ({
+            date: format(new Date(w.date), 'yyyy-MM-dd'),
+            type: w.type,
+            duration_minutes: w.duration,
+            calories: w.calories,
+            notes: w.notes,
+          })),
+          skincare_routines: [],
+          generate_exercise_plan: true,
+          generate_skincare_tips: false,
+        },
+      });
 
-    const plan = `## Your Personalized Exercise Plan
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-Based on your workout history, here's a customized 4-week plan:
+      // Use the exercise plan from CodeWords, or fallback to summary
+      const plan = data.exercise_plan || data.summary || `## Your Personalized Exercise Plan
 
-### Week 1-2: Foundation Building
+Based on your ${workouts.length} logged workouts, here are your fitness metrics:
 
-**Monday - Upper Body Strength**
-- Bench Press: 3x10
-- Rows: 3x12
-- Shoulder Press: 3x10
-- Bicep Curls: 3x12
-- Tricep Dips: 3x10
+### Current Stats
+- **Total Workouts**: ${data.fitness_metrics?.total_workouts || workouts.length}
+- **Calories Burned**: ${data.fitness_metrics?.total_calories_burned || totalCalories}
+- **Total Duration**: ${data.fitness_metrics?.total_duration_minutes || totalMinutes} minutes
+- **Most Frequent**: ${data.fitness_metrics?.most_frequent_workout || topWorkout}
 
-**Tuesday - Cardio**
-- 30 min moderate intensity jog or bike
-- 10 min cool-down stretching
+### Progress Insights
+${(data.progress_insights || ['Keep up the great work!']).map((insight: string) => `- ${insight}`).join('\n')}
 
-**Wednesday - Lower Body**
-- Squats: 4x10
-- Lunges: 3x12 each leg
-- Leg Press: 3x12
-- Calf Raises: 3x15
+> Continue tracking your workouts for more personalized recommendations!`;
 
-**Thursday - Active Recovery**
-- 30 min yoga or light stretching
-- Foam rolling
-
-**Friday - HIIT**
-- 20 min interval training
-- 10 min strength circuits
-
-### Nutrition Tips
-- Pre-workout: Light carbs 1 hour before
-- Post-workout: Protein within 30 minutes
-- Stay hydrated throughout
-
-> Remember to listen to your body and rest when needed!`;
-
-    setExercisePlan(plan);
-    setIsGeneratingPlan(false);
+      setExercisePlan(plan);
+      
+      toast({
+        title: "Plan Generated!",
+        description: "Your AI exercise plan is ready.",
+      });
+    } catch (error) {
+      console.error('Error generating plan:', error);
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to generate exercise plan.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPlan(false);
+    }
   };
 
   const handleExportCSV = () => {

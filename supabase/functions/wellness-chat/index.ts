@@ -5,8 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
+interface ConversationMessage {
+  role: 'user' | 'assistant';
   content: string;
 }
 
@@ -17,76 +17,64 @@ serve(async (req) => {
 
   try {
     const { messages, userName } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const CODEWORDS_API_KEY = Deno.env.get('CODEWORDS_API_KEY');
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!CODEWORDS_API_KEY) {
+      throw new Error('CODEWORDS_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are a friendly, knowledgeable AI wellness assistant. Your name is "Wellness AI". You help users with:
-- Fitness tips and workout advice
-- Nutrition and diet guidance
-- Skincare routines and tips
-- Mental health and stress management
-- General wellness and lifestyle improvements
+    // Get the latest user message
+    const userMessages = messages.filter((msg: ConversationMessage) => msg.role === 'user');
+    const latestMessage = userMessages[userMessages.length - 1]?.content || '';
 
-GUIDELINES:
-- Be warm, encouraging, and supportive
-- Provide practical, actionable advice
-- Use emojis sparingly to be friendly but professional
-- Format responses with markdown for readability (bullet points, bold text, etc.)
-- Keep responses concise but informative
-- Always remind users to consult healthcare professionals for medical concerns
-- ${userName ? `Address the user as ${userName} occasionally to personalize the conversation` : 'Be friendly and personable'}
+    // Prepare conversation history for CodeWords API
+    const conversationHistory: ConversationMessage[] = messages.slice(0, -1).map((msg: { role: string; content: string }) => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+    }));
 
-Remember: Your advice is for educational purposes only and should not replace professional medical consultation.`;
+    console.log('Sending chat request to CodeWords AI Health Chatbot...');
 
-    const chatMessages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      ...messages.map((msg: { role: string; content: string }) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      })),
-    ];
-
-    console.log('Sending chat request to Lovable AI Gateway...');
-
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://runtime.codewords.ai/run/ai_health_chatbot_a1b0473f', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${CODEWORDS_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: chatMessages,
+        message: latestMessage,
+        conversation_history: conversationHistory,
+        user_name: userName || 'User',
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('CodeWords API error:', response.status, errorText);
+      
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }), {
-          status: 402,
+      if (response.status === 401 || response.status === 403) {
+        return new Response(JSON.stringify({ error: 'Authentication failed. Please check your API key.' }), {
+          status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
-      throw new Error(`AI Gateway error: ${response.status}`);
+      
+      throw new Error(`CodeWords API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const generatedText = data.choices[0].message.content;
+    console.log('Successfully received CodeWords chat response');
 
-    console.log('Successfully received chat response');
-
-    return new Response(JSON.stringify({ response: generatedText }), {
+    return new Response(JSON.stringify({ 
+      response: data.response,
+      tokens_used: data.tokens_used 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

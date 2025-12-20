@@ -5,6 +5,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Map frontend focus area IDs to CodeWords expected values
+const focusAreaMap: Record<string, string> = {
+  'fitness': 'Fitness',
+  'nutrition': 'Nutrition',
+  'skincare': 'Skincare',
+  'wellness': 'General Wellness',
+  'mental': 'Mental Health',
+};
+
+// Map frontend gender values to CodeWords expected values
+const genderMap: Record<string, string> = {
+  'male': 'Male',
+  'female': 'Female',
+  'other': 'Other',
+  'prefer-not': 'Prefer not to say',
+};
+
+// Map frontend fitness level to CodeWords expected values
+const fitnessLevelMap: Record<string, string> = {
+  'beginner': 'Beginner',
+  'intermediate': 'Intermediate',
+  'advanced': 'Advanced',
+  'athlete': 'Athlete',
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -12,81 +37,68 @@ serve(async (req) => {
 
   try {
     const { profile, query, focusArea } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const CODEWORDS_API_KEY = Deno.env.get('CODEWORDS_API_KEY');
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!CODEWORDS_API_KEY) {
+      throw new Error('CODEWORDS_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are a knowledgeable and empathetic AI health consultant specializing in personalized wellness advice. Your role is to provide evidence-based recommendations while being supportive and encouraging.
+    console.log('Sending request to CodeWords AI Health Consultant...');
 
-IMPORTANT GUIDELINES:
-- Always include a disclaimer that your advice is for educational purposes only and should not replace professional medical consultation
-- Be specific and actionable in your recommendations
-- Consider the user's profile information when providing advice
-- Format your response with clear sections using markdown headers, bullet points, and tables where appropriate
-- Be encouraging and supportive in your tone
-- If the user mentions serious health concerns, always recommend consulting a healthcare professional
+    // Build the request body for CodeWords API
+    const requestBody = {
+      age: parseInt(profile.age) || 25,
+      gender: genderMap[profile.gender] || 'Prefer not to say',
+      height: profile.height || 'Not specified',
+      weight: profile.weight || 'Not specified',
+      fitness_level: fitnessLevelMap[profile.fitnessLevel] || 'Beginner',
+      health_goals: profile.healthGoals || 'General wellness improvement',
+      medical_conditions: profile.medicalConditions || 'None',
+      dietary_restrictions: profile.dietaryRestrictions || 'None',
+      health_query: query,
+      focus_area: focusAreaMap[focusArea] || 'General Wellness',
+    };
 
-USER PROFILE:
-- Age: ${profile.age || 'Not specified'}
-- Gender: ${profile.gender || 'Not specified'}
-- Height: ${profile.height || 'Not specified'}
-- Weight: ${profile.weight || 'Not specified'}
-- Fitness Level: ${profile.fitnessLevel || 'Not specified'}
-- Health Goals: ${profile.healthGoals || 'Not specified'}
-- Medical Conditions: ${profile.medicalConditions || 'None mentioned'}
-- Dietary Restrictions: ${profile.dietaryRestrictions || 'None mentioned'}
+    console.log('CodeWords request body:', JSON.stringify(requestBody, null, 2));
 
-FOCUS AREA: ${focusArea}
-
-Provide personalized, detailed recommendations based on the user's profile and focus area. Structure your response with:
-1. Key insights
-2. Specific action items or recommendations
-3. A weekly plan or routine (if applicable)
-4. Important notes and disclaimers`;
-
-    console.log('Sending request to Lovable AI Gateway...');
-
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://runtime.codewords.ai/run/ai_health_consultant_a8018af1', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${CODEWORDS_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: query }
-        ],
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('CodeWords API error:', response.status, errorText);
+      
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }), {
-          status: 402,
+      if (response.status === 401 || response.status === 403) {
+        return new Response(JSON.stringify({ error: 'Authentication failed. Please check your API key.' }), {
+          status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
-      throw new Error(`AI Gateway error: ${response.status}`);
+      
+      throw new Error(`CodeWords API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const generatedText = data.choices[0].message.content;
+    console.log('Successfully received CodeWords AI response');
 
-    console.log('Successfully received AI response');
-
-    return new Response(JSON.stringify({ result: generatedText }), {
+    return new Response(JSON.stringify({ 
+      result: data.consultation,
+      focus_area: data.focus_area,
+      disclaimer: data.disclaimer,
+      tokens_used: data.tokens_used 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

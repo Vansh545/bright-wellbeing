@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   LineChart,
   Line,
@@ -140,45 +141,59 @@ export default function SkincareTracker() {
 
   const handleGetTips = async () => {
     setIsGeneratingTips(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('personal-health-hub', {
+        body: {
+          fitness_level: 'intermediate',
+          primary_goal: goals.main,
+          weight_goal: '',
+          workouts: [],
+          skincare_routines: entries.map(e => ({
+            routine_type: e.routineType,
+            products_used: e.products,
+            skin_condition: e.condition,
+            notes: e.notes,
+          })),
+          generate_exercise_plan: false,
+          generate_skincare_tips: true,
+        },
+      });
 
-    const tips = `## Personalized Skincare Recommendations
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-Based on your routine history and skin condition trends, here are my recommendations:
+      // Use the skincare recommendations from CodeWords, or fallback to summary
+      const tips = data.skincare_recommendations || data.summary || `## Personalized Skincare Recommendations
 
-### Morning Routine Enhancement
+Based on your ${entries.length} logged routines, here are my recommendations:
 
-1. **Double Cleanse on Rest Days**
-   - Start with an oil-based cleanser
-   - Follow with a gentle water-based cleanser
+### Your Skincare Goals
+- **Main Goal**: ${goals.main}
+- **Hydration**: ${goals.hydration}
+- **Protection**: ${goals.protection}
 
-2. **Add Antioxidant Protection**
-   - Consider adding a Vitamin C serum before sunscreen
-   - This provides additional UV protection
+### Recommendations
+${(data.progress_insights || ['Keep up your consistent skincare routine!']).map((insight: string) => `- ${insight}`).join('\n')}
 
-### Evening Routine Optimization
+> Continue tracking your routines for more personalized recommendations!`;
 
-- **Layering Order**: Thinnest to thickest consistency
-- **Wait Times**: Allow 30 seconds between each product
-- **Retinol Usage**: Start 2x per week, gradually increase
-
-### Product Recommendations
-
-| Concern | Ingredient to Look For |
-|---------|----------------------|
-| Fine Lines | Retinol, Peptides |
-| Hydration | Hyaluronic Acid, Ceramides |
-| Brightening | Vitamin C, Niacinamide |
-| Acne | Salicylic Acid, Benzoyl Peroxide |
-
-### Weekly Treatments
-
-> Consider adding a chemical exfoliant (AHA/BHA) once a week for improved texture and glow.
-
-**Note**: Always patch test new products and introduce one new product at a time!`;
-
-    setSkincareTips(tips);
-    setIsGeneratingTips(false);
+      setSkincareTips(tips);
+      
+      toast({
+        title: "Tips Generated!",
+        description: "Your AI skincare tips are ready.",
+      });
+    } catch (error) {
+      console.error('Error getting tips:', error);
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to get skincare tips.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingTips(false);
+    }
   };
 
   const getConditionIcon = (type: string) => {
