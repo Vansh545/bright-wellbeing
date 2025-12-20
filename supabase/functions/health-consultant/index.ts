@@ -1,9 +1,28 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schemas
+const ProfileSchema = z.object({
+  age: z.string().max(10).optional(),
+  gender: z.string().max(20).optional(),
+  height: z.string().max(20).optional(),
+  weight: z.string().max(20).optional(),
+  fitnessLevel: z.string().max(50).optional(),
+  healthGoals: z.string().max(500).optional(),
+  medicalConditions: z.string().max(500).optional(),
+  dietaryRestrictions: z.string().max(500).optional(),
+});
+
+const RequestSchema = z.object({
+  profile: ProfileSchema,
+  query: z.string().min(1).max(2000),
+  focusArea: z.string().max(50),
+});
 
 // Map frontend focus area IDs to CodeWords expected values
 const focusAreaMap: Record<string, string> = {
@@ -36,7 +55,19 @@ serve(async (req) => {
   }
 
   try {
-    const { profile, query, focusArea } = await req.json();
+    const body = await req.json();
+    
+    // Validate input
+    const validationResult = RequestSchema.safeParse(body);
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ error: 'Invalid input. Please check your request data.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { profile, query, focusArea } = validationResult.data;
     const CODEWORDS_API_KEY = Deno.env.get('CODEWORDS_API_KEY');
     
     if (!CODEWORDS_API_KEY) {
@@ -47,11 +78,11 @@ serve(async (req) => {
 
     // Build the request body for CodeWords API
     const requestBody = {
-      age: parseInt(profile.age) || 25,
-      gender: genderMap[profile.gender] || 'Prefer not to say',
+      age: parseInt(profile.age || '25') || 25,
+      gender: genderMap[profile.gender || ''] || 'Prefer not to say',
       height: profile.height || 'Not specified',
       weight: profile.weight || 'Not specified',
-      fitness_level: fitnessLevelMap[profile.fitnessLevel] || 'Beginner',
+      fitness_level: fitnessLevelMap[profile.fitnessLevel || ''] || 'Beginner',
       health_goals: profile.healthGoals || 'General wellness improvement',
       medical_conditions: profile.medicalConditions || 'None',
       dietary_restrictions: profile.dietaryRestrictions || 'None',
@@ -103,7 +134,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error in health-consultant function:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
+    return new Response(JSON.stringify({ error: 'An unexpected error occurred. Please try again.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

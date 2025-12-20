@@ -1,14 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface ConversationMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
+// Input validation schemas
+const MessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string().min(1).max(5000),
+});
+
+const RequestSchema = z.object({
+  messages: z.array(MessageSchema).min(1).max(50),
+  userName: z.string().max(50).optional(),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,7 +23,19 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, userName } = await req.json();
+    const body = await req.json();
+    
+    // Validate input
+    const validationResult = RequestSchema.safeParse(body);
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ error: 'Invalid input. Please check your request data.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { messages, userName } = validationResult.data;
     const CODEWORDS_API_KEY = Deno.env.get('CODEWORDS_API_KEY');
     
     if (!CODEWORDS_API_KEY) {
@@ -24,12 +43,12 @@ serve(async (req) => {
     }
 
     // Get the latest user message
-    const userMessages = messages.filter((msg: ConversationMessage) => msg.role === 'user');
+    const userMessages = messages.filter((msg) => msg.role === 'user');
     const latestMessage = userMessages[userMessages.length - 1]?.content || '';
 
     // Prepare conversation history for CodeWords API
-    const conversationHistory: ConversationMessage[] = messages.slice(0, -1).map((msg: { role: string; content: string }) => ({
-      role: msg.role as 'user' | 'assistant',
+    const conversationHistory = messages.slice(0, -1).map((msg) => ({
+      role: msg.role,
       content: msg.content,
     }));
 
@@ -79,7 +98,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error in wellness-chat function:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
+    return new Response(JSON.stringify({ error: 'An unexpected error occurred. Please try again.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
