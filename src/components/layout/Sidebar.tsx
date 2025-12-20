@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -34,6 +35,19 @@ const navItems = [
 
 export function Sidebar({ onClose }: SidebarProps) {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  // Get user initials from email
+  const getUserInitials = () => {
+    if (!user?.email) return "U";
+    const email = user.email;
+    const name = email.split("@")[0];
+    return name.substring(0, 2).toUpperCase();
+  };
 
   return (
     <div className="h-full flex flex-col bg-sidebar border-r border-sidebar-border">
@@ -83,13 +97,23 @@ export function Sidebar({ onClose }: SidebarProps) {
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3 p-2">
           <div className="h-9 w-9 rounded-full bg-health-teal-light flex items-center justify-center">
-            <span className="text-sm font-semibold text-health-teal">JD</span>
+            <span className="text-sm font-semibold text-health-teal">{getUserInitials()}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">John Doe</p>
-            <p className="text-xs text-muted-foreground truncate">Premium Member</p>
+            <p className="text-sm font-medium text-foreground truncate">
+              {user?.email?.split("@")[0] || "User"}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              {user?.email || ""}
+            </p>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-sidebar-accent">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 hover:bg-sidebar-accent"
+            onClick={handleSignOut}
+            title="Sign out"
+          >
             <LogOut className="h-4 w-4 text-muted-foreground" />
           </Button>
         </div>

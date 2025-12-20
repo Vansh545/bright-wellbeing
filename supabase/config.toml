@@ -1,10 +1,10 @@
 project_id = "fukvywdrfshpanknzlrj"
 
 [functions.health-consultant]
-verify_jwt = false
+verify_jwt = true
 
 [functions.wellness-chat]
-verify_jwt = false
+verify_jwt = true
 
 [functions.personal-health-hub]
-verify_jwt = false
+verify_jwt = true
