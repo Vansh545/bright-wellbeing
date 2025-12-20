@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.wellness-chat]
 verify_jwt = false
+
+[functions.personal-health-hub]
+verify_jwt = false
