@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import AIConsultant from "./pages/AIConsultant";
 import Chatbot from "./pages/Chatbot";
@@ -12,30 +14,34 @@ import Analytics from "./pages/Analytics";
 import VideoTutorials from "./pages/VideoTutorials";
 import DeviceImport from "./pages/DeviceImport";
 import Settings from "./pages/Settings";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/ai-consultant" element={<AIConsultant />} />
-          <Route path="/chatbot" element={<Chatbot />} />
-          <Route path="/fitness" element={<FitnessTracker />} />
-          <Route path="/skincare" element={<SkincareTracker />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/tutorials" element={<VideoTutorials />} />
-          <Route path="/import" element={<DeviceImport />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/ai-consultant" element={<ProtectedRoute><AIConsultant /></ProtectedRoute>} />
+            <Route path="/chatbot" element={<ProtectedRoute><Chatbot /></ProtectedRoute>} />
+            <Route path="/fitness" element={<ProtectedRoute><FitnessTracker /></ProtectedRoute>} />
+            <Route path="/skincare" element={<ProtectedRoute><SkincareTracker /></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+            <Route path="/tutorials" element={<ProtectedRoute><VideoTutorials /></ProtectedRoute>} />
+            <Route path="/import" element={<ProtectedRoute><DeviceImport /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
