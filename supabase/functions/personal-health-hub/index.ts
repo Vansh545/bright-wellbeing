@@ -1,9 +1,40 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schemas
+const WorkoutEntrySchema = z.object({
+  date: z.string().max(50),
+  type: z.string().max(50),
+  duration: z.number().min(0).max(1440).optional(),
+  duration_minutes: z.number().min(0).max(1440).optional(),
+  calories: z.number().min(0).max(50000).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+const SkincareEntrySchema = z.object({
+  routineType: z.string().max(50).optional(),
+  routine_type: z.string().max(50).optional(),
+  products: z.array(z.string().max(100)).max(20).optional(),
+  products_used: z.array(z.string().max(100)).max(20).optional(),
+  condition: z.string().max(50).optional(),
+  skin_condition: z.string().max(50).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+const RequestSchema = z.object({
+  fitness_level: z.string().max(50).optional(),
+  primary_goal: z.string().max(200).optional(),
+  weight_goal: z.string().max(100).optional(),
+  workouts: z.array(WorkoutEntrySchema).max(100).optional(),
+  skincare_routines: z.array(SkincareEntrySchema).max(100).optional(),
+  generate_exercise_plan: z.boolean().optional(),
+  generate_skincare_tips: z.boolean().optional(),
+});
 
 interface WorkoutEntry {
   date: string;
@@ -59,6 +90,18 @@ serve(async (req) => {
   }
 
   try {
+    const body = await req.json();
+    
+    // Validate input
+    const validationResult = RequestSchema.safeParse(body);
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ error: 'Invalid input. Please check your request data.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const { 
       fitness_level,
       primary_goal,
@@ -67,7 +110,7 @@ serve(async (req) => {
       skincare_routines,
       generate_exercise_plan,
       generate_skincare_tips
-    } = await req.json();
+    } = validationResult.data;
     
     const CODEWORDS_API_KEY = Deno.env.get('CODEWORDS_API_KEY');
     
@@ -78,7 +121,7 @@ serve(async (req) => {
     console.log('Sending request to CodeWords Personal Health Hub...');
 
     // Transform workouts to CodeWords format
-    const transformedWorkouts: WorkoutEntry[] = (workouts || []).map((w: any) => ({
+    const transformedWorkouts: WorkoutEntry[] = (workouts || []).map((w) => ({
       date: typeof w.date === 'string' ? w.date : new Date(w.date).toISOString().split('T')[0],
       type: workoutTypeMap[w.type] || 'Other',
       duration_minutes: w.duration || w.duration_minutes || 0,
@@ -87,15 +130,15 @@ serve(async (req) => {
     }));
 
     // Transform skincare routines to CodeWords format
-    const transformedSkincareRoutines: SkincareEntry[] = (skincare_routines || []).map((s: any) => ({
-      routine_type: routineTypeMap[s.routineType] || s.routine_type || 'Morning',
+    const transformedSkincareRoutines: SkincareEntry[] = (skincare_routines || []).map((s) => ({
+      routine_type: routineTypeMap[s.routineType || ''] || s.routine_type || 'Morning',
       products_used: Array.isArray(s.products) ? s.products : (s.products_used || []),
-      skin_condition: skinConditionMap[s.condition] || s.skin_condition || 'Good',
+      skin_condition: skinConditionMap[s.condition || ''] || s.skin_condition || 'Good',
       notes: s.notes || '',
     }));
 
     const requestBody = {
-      fitness_level: fitnessLevelMap[fitness_level] || fitness_level || 'Beginner',
+      fitness_level: fitnessLevelMap[fitness_level || ''] || fitness_level || 'Beginner',
       primary_goal: primary_goal || 'General fitness',
       weight_goal: weight_goal || '',
       workouts: transformedWorkouts,
@@ -149,7 +192,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error in personal-health-hub function:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
+    return new Response(JSON.stringify({ error: 'An unexpected error occurred. Please try again.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
