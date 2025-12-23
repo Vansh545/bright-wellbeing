@@ -42,6 +42,46 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { VideoTutorialSection } from "@/components/VideoTutorialSection";
+
+const fitnessVideos = [
+  {
+    id: "1",
+    title: "Full Body HIIT Workout",
+    description: "High-intensity interval training for maximum calorie burn in minimum time.",
+    duration: "25 min",
+    difficulty: "Intermediate",
+    thumbnail: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&h=450&fit=crop",
+    videoUrl: "https://www.youtube.com/embed/ml6cT4AZdqI",
+  },
+  {
+    id: "2",
+    title: "Strength Training Basics",
+    description: "Learn proper form and technique for fundamental strength exercises.",
+    duration: "35 min",
+    difficulty: "Beginner",
+    thumbnail: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=450&fit=crop",
+    videoUrl: "https://www.youtube.com/embed/U0bhE67HuDY",
+  },
+  {
+    id: "3",
+    title: "Morning Yoga Flow",
+    description: "Start your day with this energizing yoga sequence to wake up your body and mind.",
+    duration: "20 min",
+    difficulty: "Beginner",
+    thumbnail: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&h=450&fit=crop",
+    videoUrl: "https://www.youtube.com/embed/v7AYKMP6rOE",
+  },
+  {
+    id: "4",
+    title: "Post-Workout Stretching",
+    description: "Essential stretches to improve flexibility and prevent injury after exercise.",
+    duration: "10 min",
+    difficulty: "Beginner",
+    thumbnail: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&h=450&fit=crop",
+    videoUrl: "https://www.youtube.com/embed/L_xrDAtykMI",
+  },
+];
 
 interface Workout {
   id: string;
@@ -465,6 +505,12 @@ ${(data.progress_insights || ['Keep up the great work!']).map((insight: string) 
             </CardContent>
           </Card>
         </div>
+
+        {/* Video Tutorials Section */}
+        <VideoTutorialSection 
+          title="Fitness Tutorials" 
+          videos={fitnessVideos} 
+        />
       </motion.div>
     </AppLayout>
   );
