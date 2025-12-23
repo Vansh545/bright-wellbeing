@@ -30,6 +30,28 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { VideoTutorialSection } from "@/components/VideoTutorialSection";
+
+const skincareVideos = [
+  {
+    id: "1",
+    title: "Complete Skincare Routine",
+    description: "Step-by-step guide to building an effective morning and evening skincare routine.",
+    duration: "15 min",
+    difficulty: "Beginner",
+    thumbnail: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&h=450&fit=crop",
+    videoUrl: "https://www.youtube.com/embed/OrElyY7MFVs",
+  },
+  {
+    id: "2",
+    title: "Anti-Aging Skincare Tips",
+    description: "Expert advice on preventing and reducing signs of aging with the right products.",
+    duration: "12 min",
+    difficulty: "Intermediate",
+    thumbnail: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&h=450&fit=crop",
+    videoUrl: "https://www.youtube.com/embed/1TU_1hxqGJY",
+  },
+];
 import {
   LineChart,
   Line,
@@ -492,6 +514,12 @@ ${(data.progress_insights || ['Keep up your consistent skincare routine!']).map(
             </Card>
           </motion.div>
         )}
+
+        {/* Video Tutorials Section */}
+        <VideoTutorialSection 
+          title="Skincare Tutorials" 
+          videos={skincareVideos} 
+        />
       </motion.div>
     </AppLayout>
   );

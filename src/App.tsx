@@ -11,7 +11,7 @@ import Chatbot from "./pages/Chatbot";
 import FitnessTracker from "./pages/FitnessTracker";
 import SkincareTracker from "./pages/SkincareTracker";
 import Analytics from "./pages/Analytics";
-import VideoTutorials from "./pages/VideoTutorials";
+
 import DeviceImport from "./pages/DeviceImport";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
@@ -34,7 +34,7 @@ const App = () => (
             <Route path="/fitness" element={<ProtectedRoute><FitnessTracker /></ProtectedRoute>} />
             <Route path="/skincare" element={<ProtectedRoute><SkincareTracker /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-            <Route path="/tutorials" element={<ProtectedRoute><VideoTutorials /></ProtectedRoute>} />
+            
             <Route path="/import" element={<ProtectedRoute><DeviceImport /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />

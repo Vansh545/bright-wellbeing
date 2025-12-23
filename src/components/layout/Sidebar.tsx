@@ -6,7 +6,6 @@ import {
   Dumbbell,
   Sparkles,
   BarChart3,
-  PlayCircle,
   Upload,
   Settings,
   X,
@@ -28,7 +27,6 @@ const navItems = [
   { to: "/fitness", icon: Dumbbell, label: "Fitness Tracker" },
   { to: "/skincare", icon: Sparkles, label: "Skincare Tracker" },
   { to: "/analytics", icon: BarChart3, label: "Analytics" },
-  { to: "/tutorials", icon: PlayCircle, label: "Video Tutorials" },
   { to: "/import", icon: Upload, label: "Import Data" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
