@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -31,6 +32,22 @@ const navItems = [
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
+const sidebarVariants = {
+  initial: { x: -20, opacity: 0 },
+  animate: { 
+    x: 0, 
+    opacity: 1,
+  },
+};
+
+const itemVariants = {
+  initial: { x: -20, opacity: 0 },
+  animate: { 
+    x: 0, 
+    opacity: 1,
+  },
+};
+
 export function Sidebar({ onClose }: SidebarProps) {
   const location = useLocation();
   const { user, signOut } = useAuth();
@@ -48,55 +65,116 @@ export function Sidebar({ onClose }: SidebarProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-sidebar border-r border-sidebar-border">
+    <motion.div 
+      className="h-full flex flex-col bg-sidebar border-r border-sidebar-border"
+      variants={sidebarVariants}
+      initial="initial"
+      animate="animate"
+    >
       {/* Logo */}
-      <div className="p-4 flex items-center justify-between border-b border-sidebar-border">
+      <motion.div 
+        className="p-4 flex items-center justify-between border-b border-sidebar-border"
+        variants={itemVariants}
+      >
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl gradient-bg flex items-center justify-center shadow-glow">
+          <motion.div 
+            className="h-10 w-10 rounded-xl gradient-bg flex items-center justify-center shadow-glow"
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            whileTap={{ scale: 0.95 }}
+          >
             <Heart className="h-5 w-5 text-primary-foreground" />
-          </div>
+          </motion.div>
           <div>
             <h1 className="font-bold text-lg text-foreground">HealthHub</h1>
             <p className="text-xs text-muted-foreground">Your wellness companion</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="lg:hidden hover:bg-sidebar-accent"
-          onClick={onClose}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden hover:bg-sidebar-accent"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </motion.div>
+      </motion.div>
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {navItems.map((item, index) => {
           const isActive = location.pathname === item.to;
           return (
-            <NavLink
+            <motion.div
               key={item.to}
-              to={item.to}
-              onClick={onClose}
-              className={cn(
-                "sidebar-item",
-                isActive && "sidebar-item-active"
-              )}
+              variants={itemVariants}
+              custom={index}
             >
-              <item.icon className={cn("h-5 w-5", isActive && "text-primary")} />
-              <span>{item.label}</span>
-            </NavLink>
+              <NavLink
+                to={item.to}
+                onClick={onClose}
+                className="relative block"
+              >
+                <motion.div
+                  className={cn(
+                    "sidebar-item relative overflow-hidden",
+                    isActive && "sidebar-item-active"
+                  )}
+                  whileHover={{ 
+                    x: 4,
+                    transition: { type: "spring", stiffness: 400, damping: 17 }
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {/* Active indicator */}
+                  <AnimatePresence>
+                    {isActive && (
+                      <motion.div
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary"
+                        initial={{ scaleY: 0 }}
+                        animate={{ scaleY: 1 }}
+                        exit={{ scaleY: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                      />
+                    )}
+                  </AnimatePresence>
+                  
+                  <motion.div
+                    animate={isActive ? { scale: [1, 1.2, 1] } : {}}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <item.icon className={cn("h-5 w-5", isActive && "text-primary")} />
+                  </motion.div>
+                  <span>{item.label}</span>
+                  
+                  {/* Hover glow effect */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 pointer-events-none"
+                    whileHover={{ opacity: 1 }}
+                  />
+                </motion.div>
+              </NavLink>
+            </motion.div>
           );
         })}
       </nav>
 
       {/* User section */}
-      <div className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-3 p-2">
-          <div className="h-9 w-9 rounded-full bg-health-teal-light flex items-center justify-center">
+      <motion.div 
+        className="p-4 border-t border-sidebar-border"
+        variants={itemVariants}
+      >
+        <motion.div 
+          className="flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
+          whileHover={{ scale: 1.02 }}
+        >
+          <motion.div 
+            className="h-9 w-9 rounded-full bg-health-teal-light flex items-center justify-center"
+            whileHover={{ rotate: 10 }}
+          >
             <span className="text-sm font-semibold text-health-teal">{getUserInitials()}</span>
-          </div>
+          </motion.div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">
               {user?.email?.split("@")[0] || "User"}
@@ -105,17 +183,19 @@ export function Sidebar({ onClose }: SidebarProps) {
               {user?.email || ""}
             </p>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 hover:bg-sidebar-accent"
-            onClick={handleSignOut}
-            title="Sign out"
-          >
-            <LogOut className="h-4 w-4 text-muted-foreground" />
-          </Button>
-        </div>
-      </div>
-    </div>
+          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 hover:bg-sidebar-accent hover:text-destructive"
+              onClick={handleSignOut}
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }

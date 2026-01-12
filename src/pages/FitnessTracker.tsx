@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import {
   Dumbbell,
@@ -8,7 +8,6 @@ import {
   Activity,
   Plus,
   Trash2,
-  Edit2,
   Download,
   Sparkles,
   Loader2,
@@ -43,6 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoTutorialSection } from "@/components/VideoTutorialSection";
+import { CountUp } from "@/components/AnimatedCounter";
 
 const fitnessVideos = [
   {
@@ -108,6 +108,21 @@ const initialWorkouts: Workout[] = [
   { id: "3", date: new Date(Date.now() - 172800000), type: "yoga", duration: 30, calories: 120, notes: "Relaxation session" },
 ];
 
+const containerVariants = {
+  initial: { opacity: 0 },
+  animate: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+};
+
 export default function FitnessTracker() {
   const { toast } = useToast();
   const [workouts, setWorkouts] = useState<Workout[]>(initialWorkouts);
@@ -118,7 +133,6 @@ export default function FitnessTracker() {
   const [notes, setNotes] = useState("");
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [exercisePlan, setExercisePlan] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"weekly" | "monthly">("weekly");
   const [sortBy, setSortBy] = useState<"date" | "type">("date");
 
   const totalWorkouts = workouts.length;
@@ -192,7 +206,6 @@ export default function FitnessTracker() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // Use the exercise plan from CodeWords, or fallback to summary
       const plan = data.exercise_plan || data.summary || `## Your Personalized Exercise Plan
 
 Based on your ${workouts.length} logged workouts, here are your fitness metrics:
@@ -259,258 +272,298 @@ ${(data.progress_insights || ['Keep up the great work!']).map((insight: string) 
   return (
     <AppLayout>
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        variants={containerVariants}
+        initial="initial"
+        animate="animate"
         className="max-w-7xl mx-auto space-y-6"
       >
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="stat-card bg-health-teal-light border-health-teal/20">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Workouts</p>
-                <p className="text-2xl font-bold text-foreground">{totalWorkouts}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-health-teal/10 flex items-center justify-center">
-                <Dumbbell className="h-5 w-5 text-health-teal" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="stat-card bg-health-coral-light border-health-coral/20">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Calories</p>
-                <p className="text-2xl font-bold text-foreground">{totalCalories.toLocaleString()}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-health-coral/10 flex items-center justify-center">
-                <Flame className="h-5 w-5 text-health-coral" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="stat-card bg-health-blue-light border-health-blue/20">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Time</p>
-                <p className="text-2xl font-bold text-foreground">{Math.floor(totalMinutes / 60)}h {totalMinutes % 60}m</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-health-blue/10 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-health-blue" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="stat-card bg-health-purple-light border-health-purple/20">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Most Frequent</p>
-                <p className="text-2xl font-bold text-foreground capitalize">{topWorkout}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-health-purple/10 flex items-center justify-center">
-                <Activity className="h-5 w-5 text-health-purple" />
-              </div>
-            </div>
-          </Card>
-        </div>
+        <motion.div 
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+          variants={containerVariants}
+        >
+          {[
+            { label: "Total Workouts", value: totalWorkouts, icon: Dumbbell, bg: "bg-health-teal-light", iconBg: "bg-health-teal/10", iconColor: "text-health-teal" },
+            { label: "Total Calories", value: totalCalories, icon: Flame, bg: "bg-health-coral-light", iconBg: "bg-health-coral/10", iconColor: "text-health-coral" },
+            { label: "Total Time", value: `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`, icon: Clock, bg: "bg-health-blue-light", iconBg: "bg-health-blue/10", iconColor: "text-health-blue", isString: true },
+            { label: "Most Frequent", value: topWorkout, icon: Activity, bg: "bg-health-purple-light", iconBg: "bg-health-purple/10", iconColor: "text-health-purple", isString: true },
+          ].map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              variants={itemVariants}
+              whileHover={{ y: -4, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            >
+              <Card className={`stat-card ${stat.bg} border-transparent hover:shadow-lg transition-shadow`}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {stat.isString ? stat.value : <CountUp end={stat.value as number} duration={1.5} />}
+                    </p>
+                  </div>
+                  <motion.div 
+                    className={`h-10 w-10 rounded-lg ${stat.iconBg} flex items-center justify-center`}
+                    whileHover={{ rotate: 10, scale: 1.1 }}
+                  >
+                    <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+                  </motion.div>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Workout Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5 text-primary" />
-                Log Workout
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !date && "text-muted-foreground"
-                      )}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {date ? format(date, "PPP") : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={date}
-                      onSelect={(d) => d && setDate(d)}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div>
-                <Label>Workout Type</Label>
-                <Select value={workoutType} onValueChange={setWorkoutType}>
-                  <SelectTrigger className="input-focus">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workoutTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Duration (minutes)</Label>
-                  <Input
-                    type="number"
-                    placeholder="45"
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    className="input-focus"
-                  />
-                </div>
-                <div>
-                  <Label>Calories Burned</Label>
-                  <Input
-                    type="number"
-                    placeholder="300"
-                    value={calories}
-                    onChange={(e) => setCalories(e.target.value)}
-                    className="input-focus"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label>Notes</Label>
-                <Textarea
-                  placeholder="How did it go?"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="input-focus resize-none"
-                  rows={3}
-                />
-              </div>
-
-              <Button onClick={handleAddWorkout} className="w-full" variant="hero">
-                <Plus className="h-4 w-4" />
-                Log Workout
-              </Button>
-
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleGeneratePlan}
-                    disabled={isGeneratingPlan}
-                  >
-                    {isGeneratingPlan ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
-                    )}
-                    Generate AI Exercise Plan
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-primary" />
-                      Your AI Exercise Plan
-                    </DialogTitle>
-                  </DialogHeader>
-                  {exercisePlan && (
-                    <div className="markdown-content">
-                      <ReactMarkdown>{exercisePlan}</ReactMarkdown>
-                    </div>
-                  )}
-                </DialogContent>
-              </Dialog>
-            </CardContent>
-          </Card>
-
-          {/* Workout History */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+          <motion.div variants={itemVariants}>
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Workout History
+                  <motion.div
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                  >
+                    <Plus className="h-5 w-5 text-primary" />
+                  </motion.div>
+                  Log Workout
                 </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Select value={sortBy} onValueChange={(v: "date" | "type") => setSortBy(v)}>
-                    <SelectTrigger className="w-28 h-8 text-xs">
-                      <SelectValue />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <Label>Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !date && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {date ? format(date, "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={date}
+                        onSelect={(d) => d && setDate(d)}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Label>Workout Type</Label>
+                  <Select value={workoutType} onValueChange={setWorkoutType}>
+                    <SelectTrigger className="input-focus">
+                      <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="date">By Date</SelectItem>
-                      <SelectItem value="type">By Type</SelectItem>
+                      {workoutTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" size="sm" onClick={handleExportCSV}>
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
-              {sortedWorkouts.map((workout) => (
-                <div
-                  key={workout.id}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                </motion.div>
+
+                <motion.div 
+                  className="grid grid-cols-2 gap-4"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
                 >
-                  <div className={cn("h-2 w-2 rounded-full", getTypeColor(workout.type))} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-foreground capitalize">
-                        {workout.type}
-                      </p>
-                      <Badge variant="secondary" className="text-xs">
-                        {workout.duration} min
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {workout.calories} cal
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(workout.date), "MMM d, yyyy")}
-                      {workout.notes && ` • ${workout.notes}`}
-                    </p>
+                  <div>
+                    <Label>Duration (minutes)</Label>
+                    <Input
+                      type="number"
+                      placeholder="45"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      className="input-focus"
+                    />
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Edit2 className="h-3 w-3" />
+                  <div>
+                    <Label>Calories Burned</Label>
+                    <Input
+                      type="number"
+                      placeholder="300"
+                      value={calories}
+                      onChange={(e) => setCalories(e.target.value)}
+                      className="input-focus"
+                    />
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <Label>Notes</Label>
+                  <Textarea
+                    placeholder="How did it go?"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="input-focus resize-none"
+                    rows={3}
+                  />
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="space-y-3"
+                >
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Button onClick={handleAddWorkout} className="w-full" variant="hero">
+                      <Plus className="h-4 w-4" />
+                      Log Workout
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteWorkout(workout.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                  </motion.div>
+
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={handleGeneratePlan}
+                          disabled={isGeneratingPlan}
+                        >
+                          {isGeneratingPlan ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <motion.div
+                              animate={{ rotate: [0, 360] }}
+                              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </motion.div>
+                          )}
+                          Generate AI Exercise Plan
+                        </Button>
+                      </motion.div>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-primary" />
+                          Your AI Exercise Plan
+                        </DialogTitle>
+                      </DialogHeader>
+                      {exercisePlan && (
+                        <motion.div 
+                          className="markdown-content"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                        >
+                          <ReactMarkdown>{exercisePlan}</ReactMarkdown>
+                        </motion.div>
+                      )}
+                    </DialogContent>
+                  </Dialog>
+                </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Workout History */}
+          <motion.div variants={itemVariants}>
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    Workout History
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Select value={sortBy} onValueChange={(v: "date" | "type") => setSortBy(v)}>
+                      <SelectTrigger className="w-28 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="date">By Date</SelectItem>
+                        <SelectItem value="type">By Type</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                      <Button variant="outline" size="sm" onClick={handleExportCSV}>
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </motion.div>
                   </div>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
+                <AnimatePresence>
+                  {sortedWorkouts.map((workout, index) => (
+                    <motion.div
+                      key={workout.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ delay: index * 0.05 }}
+                      whileHover={{ x: 4, backgroundColor: "rgba(var(--muted), 0.5)" }}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 transition-colors cursor-pointer"
+                    >
+                      <motion.div 
+                        className={`h-10 w-10 rounded-lg ${getTypeColor(workout.type)} flex items-center justify-center`}
+                        whileHover={{ rotate: 10 }}
+                      >
+                        <Dumbbell className="h-5 w-5 text-primary-foreground" />
+                      </motion.div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-foreground capitalize">
+                            {workout.type}
+                          </p>
+                          <Badge variant="secondary" className="text-xs">
+                            {workout.duration} min
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {format(new Date(workout.date), "MMM d")} • {workout.calories} cal
+                          {workout.notes && ` • ${workout.notes}`}
+                        </p>
+                      </div>
+                      <motion.div whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteWorkout(workout.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </motion.div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
-        {/* Video Tutorials Section */}
-        <VideoTutorialSection 
-          title="Fitness Tutorials" 
-          videos={fitnessVideos} 
-        />
+        {/* Video Tutorials */}
+        <motion.div variants={itemVariants}>
+          <VideoTutorialSection title="Fitness Tutorials" videos={fitnessVideos} />
+        </motion.div>
       </motion.div>
     </AppLayout>
   );

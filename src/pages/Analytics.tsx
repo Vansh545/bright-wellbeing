@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
   Target,
   Trophy,
   Download,
-  Calendar,
   TrendingUp,
   Flame,
   Dumbbell,
@@ -42,6 +41,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { CountUp } from "@/components/AnimatedCounter";
 
 const weeklyWorkouts = [
   { week: "Week 1", workouts: 3 },
@@ -95,6 +95,21 @@ const motivationalInsights = [
   "You've burned 2,000 more calories this month compared to last month!",
 ];
 
+const containerVariants = {
+  initial: { opacity: 0 },
+  animate: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+};
+
 export default function Analytics() {
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState("month");
@@ -115,17 +130,38 @@ export default function Analytics() {
   return (
     <AppLayout>
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        variants={containerVariants}
+        initial="initial"
+        animate="animate"
         className="max-w-7xl mx-auto space-y-6"
       >
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <motion.div 
+          variants={itemVariants}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        >
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Progress & Analytics</h1>
-            <p className="text-muted-foreground">Track your health journey and achievements</p>
+            <motion.h1 
+              className="text-2xl font-bold text-foreground"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              Progress & Analytics
+            </motion.h1>
+            <motion.p 
+              className="text-muted-foreground"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+              Track your health journey and achievements
+            </motion.p>
           </div>
-          <div className="flex items-center gap-2">
+          <motion.div 
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
             <Select value={dateRange} onValueChange={setDateRange}>
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -137,293 +173,376 @@ export default function Analytics() {
                 <SelectItem value="year">This Year</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={() => handleExport("csv")}>
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-          </div>
-        </div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button variant="outline" onClick={() => handleExport("csv")}>
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
 
         {/* Goal Setting */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary" />
-              Set Your Goals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Weight Goal</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Target weight"
-                    value={goals.weight}
-                    onChange={(e) => setGoals({ ...goals, weight: e.target.value })}
-                    className="input-focus"
+        <motion.div variants={itemVariants}>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <Target className="h-5 w-5 text-primary" />
+                </motion.div>
+                Set Your Goals
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                <motion.div 
+                  className="space-y-2"
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <Label>Weight Goal</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Target weight"
+                      value={goals.weight}
+                      onChange={(e) => setGoals({ ...goals, weight: e.target.value })}
+                      className="input-focus"
+                    />
+                    <Input
+                      type="date"
+                      value={goals.weightDate}
+                      onChange={(e) => setGoals({ ...goals, weightDate: e.target.value })}
+                      className="input-focus"
+                    />
+                  </div>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.02 }}>
+                  <Label>Fitness Goal</Label>
+                  <Textarea
+                    placeholder="E.g., Run 5K in under 25 minutes"
+                    value={goals.fitness}
+                    onChange={(e) => setGoals({ ...goals, fitness: e.target.value })}
+                    className="input-focus resize-none"
+                    rows={2}
                   />
-                  <Input
-                    type="date"
-                    value={goals.weightDate}
-                    onChange={(e) => setGoals({ ...goals, weightDate: e.target.value })}
-                    className="input-focus"
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.02 }}>
+                  <Label>Skincare Goal</Label>
+                  <Textarea
+                    placeholder="E.g., Clear skin by end of month"
+                    value={goals.skincare}
+                    onChange={(e) => setGoals({ ...goals, skincare: e.target.value })}
+                    className="input-focus resize-none"
+                    rows={2}
                   />
-                </div>
+                </motion.div>
               </div>
-              <div>
-                <Label>Fitness Goal</Label>
-                <Textarea
-                  placeholder="E.g., Run 5K in under 25 minutes"
-                  value={goals.fitness}
-                  onChange={(e) => setGoals({ ...goals, fitness: e.target.value })}
-                  className="input-focus resize-none"
-                  rows={2}
-                />
-              </div>
-              <div>
-                <Label>Skincare Goal</Label>
-                <Textarea
-                  placeholder="E.g., Clear skin by end of month"
-                  value={goals.skincare}
-                  onChange={(e) => setGoals({ ...goals, skincare: e.target.value })}
-                  className="input-focus resize-none"
-                  rows={2}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Charts Grid */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <motion.div 
+          className="grid md:grid-cols-2 gap-6"
+          variants={containerVariants}
+        >
           {/* Weekly Workouts */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Dumbbell className="h-4 w-4 text-primary" />
-                Workout Frequency
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyWorkouts}>
-                    <XAxis
-                      dataKey="week"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis hide />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Bar dataKey="workouts" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div variants={itemVariants} whileHover={{ y: -4 }}>
+            <Card className="hover:shadow-lg transition-all">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Dumbbell className="h-4 w-4 text-primary" />
+                  Workout Frequency
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={weeklyWorkouts}>
+                      <XAxis
+                        dataKey="week"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      />
+                      <YAxis hide />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Bar dataKey="workouts" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Monthly Calories */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Flame className="h-4 w-4 text-health-coral" />
-                Calorie Burn Trend
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthlyCalories}>
-                    <XAxis
-                      dataKey="month"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis hide />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="calories"
-                      stroke="hsl(16, 85%, 60%)"
-                      strokeWidth={2}
-                      dot={{ fill: 'hsl(16, 85%, 60%)' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div variants={itemVariants} whileHover={{ y: -4 }}>
+            <Card className="hover:shadow-lg transition-all">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Flame className="h-4 w-4 text-health-coral" />
+                  Calorie Burn Trend
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyCalories}>
+                      <XAxis
+                        dataKey="month"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      />
+                      <YAxis hide />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="calories"
+                        stroke="hsl(16, 85%, 60%)"
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(16, 85%, 60%)' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Workout Distribution */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-primary" />
-                Workout Distribution
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-56 flex items-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={workoutDistribution}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      dataKey="value"
-                      label={({ name, value }) => `${name} ${value}%`}
-                    >
-                      {workoutDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div variants={itemVariants} whileHover={{ y: -4 }}>
+            <Card className="hover:shadow-lg transition-all">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  Workout Distribution
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-56 flex items-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={workoutDistribution}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                        label={({ name, value }) => `${name} ${value}%`}
+                      >
+                        {workoutDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Skin Condition */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-health-purple" />
-                Skin Condition Over Time
+          <motion.div variants={itemVariants} whileHover={{ y: -4 }}>
+            <Card className="hover:shadow-lg transition-all">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-health-purple" />
+                  Skin Condition Over Time
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={skinConditionData}>
+                      <XAxis
+                        dataKey="date"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      />
+                      <YAxis hide domain={[0, 5]} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="condition"
+                        stroke="hsl(270, 60%, 55%)"
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(270, 60%, 55%)' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </motion.div>
+
+        {/* Milestones */}
+        <motion.div variants={itemVariants}>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Milestone Tracker
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={skinConditionData}>
-                    <XAxis
-                      dataKey="date"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis hide domain={[0, 5]} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="condition"
-                      stroke="hsl(270, 60%, 55%)"
-                      strokeWidth={2}
-                      dot={{ fill: 'hsl(270, 60%, 55%)' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {milestones.map((milestone, index) => {
+                  const progress = (milestone.current / milestone.target) * 100;
+                  return (
+                    <motion.div 
+                      key={milestone.id} 
+                      className="p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      whileHover={{ scale: 1.03 }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium text-foreground">{milestone.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          <CountUp end={milestone.current} duration={1.5} />/{milestone.target} {milestone.unit}
+                        </p>
+                      </div>
+                      <motion.div
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: 1 }}
+                        transition={{ delay: 0.3 + index * 0.1, duration: 0.5 }}
+                        style={{ originX: 0 }}
+                      >
+                        <Progress value={progress} className="h-2" />
+                      </motion.div>
+                      <p className="text-xs text-primary mt-1">{Math.round(progress)}% complete</p>
+                    </motion.div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Milestones */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Milestone Tracker
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {milestones.map((milestone) => {
-                const progress = (milestone.current / milestone.target) * 100;
-                return (
-                  <div key={milestone.id} className="p-4 rounded-lg bg-muted/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-foreground">{milestone.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {milestone.current}/{milestone.target} {milestone.unit}
-                      </p>
-                    </div>
-                    <Progress value={progress} className="h-2" />
-                    <p className="text-xs text-primary mt-1">{Math.round(progress)}% complete</p>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        </motion.div>
 
         {/* Achievements */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-health-yellow" />
-              Achievement Badges
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-4">
-              {achievements.map((achievement) => (
-                <div
-                  key={achievement.id}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-all ${
-                    achievement.unlocked
-                      ? "bg-muted/50"
-                      : "bg-muted/20 opacity-50"
-                  }`}
+        <motion.div variants={itemVariants}>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
                 >
-                  <div
-                    className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                      achievement.unlocked ? achievement.color : "bg-muted"
+                  <Trophy className="h-5 w-5 text-health-yellow" />
+                </motion.div>
+                Achievement Badges
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-4">
+                {achievements.map((achievement, index) => (
+                  <motion.div
+                    key={achievement.id}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ 
+                      delay: index * 0.05,
+                      type: "spring",
+                      stiffness: 200,
+                    }}
+                    whileHover={achievement.unlocked ? { 
+                      scale: 1.15, 
+                      rotate: [0, -5, 5, 0],
+                      transition: { duration: 0.3 }
+                    } : {}}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-all cursor-pointer ${
+                      achievement.unlocked
+                        ? "bg-muted/50"
+                        : "bg-muted/20 opacity-50"
                     }`}
                   >
-                    <achievement.icon
-                      className={`h-6 w-6 ${
-                        achievement.unlocked ? "text-primary-foreground" : "text-muted-foreground"
+                    <motion.div
+                      className={`h-12 w-12 rounded-full flex items-center justify-center ${
+                        achievement.unlocked ? achievement.color : "bg-muted"
                       }`}
-                    />
-                  </div>
-                  <p className="text-xs text-center font-medium">{achievement.name}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                      animate={achievement.unlocked ? {
+                        boxShadow: [
+                          "0 0 0 0 rgba(var(--primary), 0)",
+                          "0 0 10px 3px rgba(var(--primary), 0.2)",
+                          "0 0 0 0 rgba(var(--primary), 0)",
+                        ],
+                      } : {}}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <achievement.icon
+                        className={`h-6 w-6 ${
+                          achievement.unlocked ? "text-primary-foreground" : "text-muted-foreground"
+                        }`}
+                      />
+                    </motion.div>
+                    <p className="text-xs text-center font-medium">{achievement.name}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Motivational Insights */}
-        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-health-mint/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
-              AI Insights
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-4">
-              {motivationalInsights.map((insight, index) => (
-                <div key={index} className="p-4 rounded-lg bg-card/80 border border-border/50">
-                  <p className="text-sm text-foreground">{insight}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div variants={itemVariants}>
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-health-mint/5 hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <motion.div
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    rotate: [0, 180, 360],
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
+                  <Zap className="h-5 w-5 text-primary" />
+                </motion.div>
+                AI Insights
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                {motivationalInsights.map((insight, index) => (
+                  <motion.div 
+                    key={index} 
+                    className="p-4 rounded-lg bg-card/80 border border-border/50 hover:border-primary/30 transition-colors"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 + index * 0.1 }}
+                    whileHover={{ scale: 1.02, y: -2 }}
+                  >
+                    <p className="text-sm text-foreground">{insight}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </motion.div>
     </AppLayout>
   );
