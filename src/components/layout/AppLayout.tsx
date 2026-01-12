@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "./Sidebar";
-import { Menu, X } from "lucide-react";
+import { Menu, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AppLayoutProps {
@@ -13,12 +14,18 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen flex w-full bg-background mesh-gradient">
       {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar */}
       <aside
@@ -32,30 +39,50 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Mobile header */}
-        <header className="lg:hidden sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border px-4 py-3">
+        <motion.header 
+          className="lg:hidden sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border px-4 py-3"
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
           <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen(true)}
-              className="hover:bg-secondary"
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(true)}
+                className="hover:bg-secondary"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </motion.div>
+            <motion.div 
+              className="flex items-center gap-2"
+              whileHover={{ scale: 1.02 }}
             >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg gradient-bg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">H</span>
-              </div>
+              <motion.div 
+                className="h-8 w-8 rounded-lg gradient-bg flex items-center justify-center"
+                whileHover={{ rotate: 10 }}
+              >
+                <Heart className="h-4 w-4 text-primary-foreground" />
+              </motion.div>
               <span className="font-semibold text-foreground">HealthHub</span>
-            </div>
+            </motion.div>
             <div className="w-10" />
           </div>
-        </header>
+        </motion.header>
 
-        {/* Page content */}
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
-          {children}
-        </main>
+        {/* Page content with animation */}
+        <motion.main 
+          className="flex-1 p-4 lg:p-6 overflow-auto"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <AnimatePresence mode="wait">
+            {children}
+          </AnimatePresence>
+        </motion.main>
       </div>
     </div>
   );
