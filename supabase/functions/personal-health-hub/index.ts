@@ -157,9 +157,9 @@ serve(async (req) => {
 
     // Transform skincare routines to CodeWords format
     const transformedSkincareRoutines: SkincareEntry[] = (skincare_routines || []).map((s) => ({
-      routine_type: routineTypeMap[s.routineType || ''] || s.routine_type || 'Morning',
+      routine_type: routineTypeMap[s.routineType || ''] || routineTypeMap[s.routine_type || ''] || 'Morning',
       products_used: Array.isArray(s.products) ? s.products : (s.products_used || []),
-      skin_condition: skinConditionMap[s.condition || ''] || s.skin_condition || 'Good',
+      skin_condition: skinConditionMap[s.condition || ''] || skinConditionMap[s.skin_condition || ''] || 'Good',
       notes: s.notes || '',
     }));
 
