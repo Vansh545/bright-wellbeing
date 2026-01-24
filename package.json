@@ -8,18 +8,9 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "pwa:build": "vite build",
-    "pwa:preview": "vite preview",
-    "cap:init": "npx cap init dev.vansh.brightwellbeing BrightWellbeing --web-dir=dist",
-    "cap:add:android": "npx cap add android",
-    "cap:add:ios": "npx cap add ios",
-    "cap:copy": "npx cap copy",
-    "cap:open:android": "npx cap open android",
-    "cap:open:ios": "npx cap open ios"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor/core": "^5.0.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -29,7 +20,7 @@
     "@radix-ui/react-collapsible": "^1.1.11",
     "@radix-ui/react-context-menu": "^2.2.15",
     "@radix-ui/react-dialog": "^1.1.14",
-    "@radix-ui/react-dropdown-menu": "^2.2.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.15",
     "@radix-ui/react-hover-card": "^1.1.14",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-menubar": "^1.1.15",
@@ -74,7 +65,6 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@capacitor/cli": "^5.0.0",
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",
@@ -91,7 +81,6 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^5.4.19",
-    "vite-plugin-pwa": "^0.14.0"
+    "vite": "^5.4.19"
   }
 }
