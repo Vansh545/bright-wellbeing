@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoTutorialSection } from "@/components/VideoTutorialSection";
 import { CountUp } from "@/components/AnimatedCounter";
+import { PersonalProfileSetup } from "@/components/fitness/PersonalProfileSetup";
 
 const fitnessVideos = [
   {
@@ -559,6 +560,11 @@ ${(data.progress_insights || ['Keep up the great work!']).map((insight: string) 
             </Card>
           </motion.div>
         </div>
+
+        {/* Personal Profile Setup */}
+        <motion.div variants={itemVariants}>
+          <PersonalProfileSetup />
+        </motion.div>
 
         {/* Video Tutorials */}
         <motion.div variants={itemVariants}>
