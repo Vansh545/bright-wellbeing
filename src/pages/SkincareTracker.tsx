@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoTutorialSection } from "@/components/VideoTutorialSection";
+import { SkincareProfileSetup } from "@/components/skincare/SkincareProfileSetup";
 
 const skincareVideos = [
   {
@@ -230,6 +231,9 @@ ${(data.progress_insights || ['Keep up your consistent skincare routine!']).map(
         animate={{ opacity: 1, y: 0 }}
         className="max-w-7xl mx-auto space-y-6"
       >
+        {/* Skincare Profile Setup */}
+        <SkincareProfileSetup />
+
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Skincare Form */}
           <Card className="lg:col-span-1">
