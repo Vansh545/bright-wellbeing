@@ -1,37 +1,18 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, User, PlayCircle } from "lucide-react";
+import { Sparkles, User, PlayCircle, Bookmark } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PillTabs, PillTabsContent } from "@/components/ui/pill-tabs";
-import { VideoTutorialSection } from "@/components/VideoTutorialSection";
 import { SkincareProfileSetup } from "@/components/skincare/SkincareProfileSetup";
 import { SkincareRoutineTab } from "@/components/skincare/SkincareRoutineTab";
-
-const skincareVideos = [
-  {
-    id: "1",
-    title: "Complete Skincare Routine",
-    description: "Step-by-step guide to building an effective morning and evening skincare routine.",
-    duration: "15 min",
-    difficulty: "Beginner",
-    thumbnail: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&h=450&fit=crop",
-    videoUrl: "https://www.youtube.com/embed/OrElyY7MFVs",
-  },
-  {
-    id: "2",
-    title: "Anti-Aging Skincare Tips",
-    description: "Expert advice on preventing and reducing signs of aging with the right products.",
-    duration: "12 min",
-    difficulty: "Intermediate",
-    thumbnail: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&h=450&fit=crop",
-    videoUrl: "https://www.youtube.com/embed/1TU_1hxqGJY",
-  },
-];
+import { VideoTutorialTab } from "@/components/videos/VideoTutorialTab";
+import { SavedVideosSection } from "@/components/videos/SavedVideosSection";
 
 const tabs = [
   { id: "routine", label: "Routine", icon: Sparkles },
   { id: "profile", label: "Profile Setup", icon: User },
   { id: "tutorials", label: "Tutorials", icon: PlayCircle },
+  { id: "saved", label: "Saved Videos", icon: Bookmark },
 ];
 
 export default function SkincareTracker() {
@@ -73,7 +54,12 @@ export default function SkincareTracker() {
           )}
           {activeTab === "tutorials" && (
             <PillTabsContent key="tutorials">
-              <VideoTutorialSection title="Skincare Tutorials" videos={skincareVideos} />
+              <VideoTutorialTab category="skincare" title="Skincare Tutorials For You" />
+            </PillTabsContent>
+          )}
+          {activeTab === "saved" && (
+            <PillTabsContent key="saved">
+              <SavedVideosSection category="skincare" />
             </PillTabsContent>
           )}
         </AnimatePresence>
