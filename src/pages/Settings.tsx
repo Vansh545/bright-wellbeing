@@ -35,6 +35,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { ApiKeySettings } from "@/components/settings/ApiKeySettings";
 
 const containerVariants = {
   initial: { opacity: 0 },
@@ -434,47 +435,9 @@ export default function Settings() {
           </Card>
         </motion.div>
 
-        {/* Privacy & API */}
+        {/* API Integrations - New Section */}
         <motion.div variants={itemVariants}>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <motion.div whileHover={{ rotate: 180 }} transition={{ duration: 0.3 }}>
-                  <Key className="h-5 w-5 text-primary" />
-                </motion.div>
-                Privacy & API
-              </CardTitle>
-              <CardDescription>Advanced settings for developers</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <motion.div 
-                className="p-4 rounded-lg bg-muted/30"
-                whileHover={{ scale: 1.01 }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-medium text-foreground">API Key</p>
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button variant="outline" size="sm">
-                      Generate New Key
-                    </Button>
-                  </motion.div>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Use this key to integrate with external apps and services.
-                </p>
-              </motion.div>
-              <motion.div 
-                className="flex items-center justify-between py-2"
-                whileHover={{ x: 4 }}
-              >
-                <div>
-                  <p className="font-medium text-foreground">Analytics</p>
-                  <p className="text-sm text-muted-foreground">Help improve the app with anonymous usage data</p>
-                </div>
-                <Switch defaultChecked />
-              </motion.div>
-            </CardContent>
-          </Card>
+          <ApiKeySettings />
         </motion.div>
 
         {/* About */}

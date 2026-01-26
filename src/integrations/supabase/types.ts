@@ -14,7 +14,147 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_encrypted: boolean | null
+          setting_key: string
+          setting_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_encrypted?: boolean | null
+          setting_key: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_encrypted?: boolean | null
+          setting_key?: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      saved_videos: {
+        Row: {
+          category: string
+          id: string
+          saved_at: string
+          user_id: string
+          video_channel: string | null
+          video_duration: string | null
+          video_id: string
+          video_thumbnail: string | null
+          video_title: string
+          video_url: string | null
+        }
+        Insert: {
+          category?: string
+          id?: string
+          saved_at?: string
+          user_id: string
+          video_channel?: string | null
+          video_duration?: string | null
+          video_id: string
+          video_thumbnail?: string | null
+          video_title: string
+          video_url?: string | null
+        }
+        Update: {
+          category?: string
+          id?: string
+          saved_at?: string
+          user_id?: string
+          video_channel?: string | null
+          video_duration?: string | null
+          video_id?: string
+          video_thumbnail?: string | null
+          video_title?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      user_video_history: {
+        Row: {
+          category: string
+          completed: boolean | null
+          id: string
+          user_id: string
+          video_channel: string | null
+          video_duration: string | null
+          video_id: string
+          video_thumbnail: string | null
+          video_title: string | null
+          watch_duration_seconds: number | null
+          watched_at: string
+        }
+        Insert: {
+          category?: string
+          completed?: boolean | null
+          id?: string
+          user_id: string
+          video_channel?: string | null
+          video_duration?: string | null
+          video_id: string
+          video_thumbnail?: string | null
+          video_title?: string | null
+          watch_duration_seconds?: number | null
+          watched_at?: string
+        }
+        Update: {
+          category?: string
+          completed?: boolean | null
+          id?: string
+          user_id?: string
+          video_channel?: string | null
+          video_duration?: string | null
+          video_id?: string
+          video_thumbnail?: string | null
+          video_title?: string | null
+          watch_duration_seconds?: number | null
+          watched_at?: string
+        }
+        Relationships: []
+      }
+      user_video_preferences: {
+        Row: {
+          avoided_topics: string[] | null
+          id: string
+          interests: string[] | null
+          last_updated: string
+          preferred_categories: string[] | null
+          preferred_difficulty: string | null
+          preferred_duration: string | null
+          user_id: string
+        }
+        Insert: {
+          avoided_topics?: string[] | null
+          id?: string
+          interests?: string[] | null
+          last_updated?: string
+          preferred_categories?: string[] | null
+          preferred_difficulty?: string | null
+          preferred_duration?: string | null
+          user_id: string
+        }
+        Update: {
+          avoided_topics?: string[] | null
+          id?: string
+          interests?: string[] | null
+          last_updated?: string
+          preferred_categories?: string[] | null
+          preferred_difficulty?: string | null
+          preferred_duration?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
