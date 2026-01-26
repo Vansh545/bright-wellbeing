@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "./Sidebar";
 import { Menu, Heart } from "lucide-react";
+import { GlobalChatbot } from "@/components/chatbot/GlobalChatbot";
 import { Button } from "@/components/ui/button";
 
 interface AppLayoutProps {
@@ -84,6 +85,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           </AnimatePresence>
         </motion.main>
       </div>
+
+      {/* Global AI Chatbot */}
+      <GlobalChatbot />
     </div>
   );
 }
