@@ -26,6 +26,7 @@ const navItems = [
   { to: "/ai-consultant", icon: Bot, label: "AI Consultant" },
   { to: "/chatbot", icon: MessageSquare, label: "AI Chatbot" },
   { to: "/fitness", icon: Dumbbell, label: "Fitness Tracker" },
+  { to: "/health-tracking", icon: Heart, label: "Health Tracking" },
   { to: "/skincare", icon: Sparkles, label: "Skincare Tracker" },
   { to: "/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/import", icon: Upload, label: "Import Data" },
