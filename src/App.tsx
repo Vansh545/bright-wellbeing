@@ -9,9 +9,9 @@ import Dashboard from "./pages/Dashboard";
 import AIConsultant from "./pages/AIConsultant";
 import Chatbot from "./pages/Chatbot";
 import FitnessTracker from "./pages/FitnessTracker";
+import HealthTracking from "./pages/HealthTracking";
 import SkincareTracker from "./pages/SkincareTracker";
 import Analytics from "./pages/Analytics";
-
 import DeviceImport from "./pages/DeviceImport";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
@@ -32,9 +32,9 @@ const App = () => (
             <Route path="/ai-consultant" element={<ProtectedRoute><AIConsultant /></ProtectedRoute>} />
             <Route path="/chatbot" element={<ProtectedRoute><Chatbot /></ProtectedRoute>} />
             <Route path="/fitness" element={<ProtectedRoute><FitnessTracker /></ProtectedRoute>} />
+            <Route path="/health-tracking" element={<ProtectedRoute><HealthTracking /></ProtectedRoute>} />
             <Route path="/skincare" element={<ProtectedRoute><SkincareTracker /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-            
             <Route path="/import" element={<ProtectedRoute><DeviceImport /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />

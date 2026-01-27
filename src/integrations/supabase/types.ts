@@ -41,6 +41,87 @@ export type Database = {
         }
         Relationships: []
       }
+      health_conditions: {
+        Row: {
+          created_at: string
+          diagnosed_date: string | null
+          id: string
+          last_checkup: string | null
+          name: string
+          notes: string | null
+          severity: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          diagnosed_date?: string | null
+          id?: string
+          last_checkup?: string | null
+          name: string
+          notes?: string | null
+          severity?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          diagnosed_date?: string | null
+          id?: string
+          last_checkup?: string | null
+          name?: string
+          notes?: string | null
+          severity?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      medications: {
+        Row: {
+          condition: string | null
+          created_at: string
+          dosage: string | null
+          frequency: string | null
+          id: string
+          instructions: string | null
+          is_active: boolean | null
+          name: string
+          started_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          condition?: string | null
+          created_at?: string
+          dosage?: string | null
+          frequency?: string | null
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          name: string
+          started_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          condition?: string | null
+          created_at?: string
+          dosage?: string | null
+          frequency?: string | null
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          name?: string
+          started_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       saved_videos: {
         Row: {
           category: string
@@ -77,6 +158,36 @@ export type Database = {
           video_thumbnail?: string | null
           video_title?: string
           video_url?: string | null
+        }
+        Relationships: []
+      }
+      symptoms: {
+        Row: {
+          created_at: string
+          id: string
+          logged_at: string
+          name: string
+          notes: string | null
+          severity: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logged_at?: string
+          name: string
+          notes?: string | null
+          severity?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logged_at?: string
+          name?: string
+          notes?: string | null
+          severity?: number | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -152,6 +263,39 @@ export type Database = {
           preferred_difficulty?: string | null
           preferred_duration?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      vital_signs: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          recorded_at: string
+          type: string
+          unit: string | null
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recorded_at?: string
+          type: string
+          unit?: string | null
+          user_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recorded_at?: string
+          type?: string
+          unit?: string | null
+          user_id?: string
+          value?: string
         }
         Relationships: []
       }
