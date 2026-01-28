@@ -1,19 +1,24 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Mail, Lock, Loader2, AlertCircle, Eye, EyeOff, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
 
-const authSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+// Auth Components
+import { AuthMascot, type MascotState } from "@/components/auth/AuthMascot";
+import { PasswordStrengthIndicator, validatePasswordStrength } from "@/components/auth/PasswordStrengthIndicator";
+import { ForgotPasswordDialog } from "@/components/auth/ForgotPasswordDialog";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
+import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
+
+const emailSchema = z.string().email("Please enter a valid email address");
 
 // Floating orb component
 const FloatingOrb = ({ delay, size, color, position }: { delay: number; size: string; color: string; position: string }) => (
@@ -35,6 +40,7 @@ const FloatingOrb = ({ delay, size, color, position }: { delay: number; size: st
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user, signIn, signUp, loading: authLoading } = useAuth();
   
@@ -44,6 +50,21 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [mascotState, setMascotState] = useState<MascotState>("wave");
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [showVerificationBanner, setShowVerificationBanner] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+
+  // Check for password reset redirect
+  useEffect(() => {
+    if (searchParams.get("reset") === "true") {
+      toast({
+        title: "Password Reset",
+        description: "Please enter your new password below.",
+      });
+    }
+  }, [searchParams, toast]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -52,18 +73,60 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
+  // Update mascot state based on mode
+  useEffect(() => {
+    if (!isLoading && !isTyping) {
+      setMascotState(isLogin ? "wave" : "wave");
+    }
+  }, [isLogin, isLoading, isTyping]);
+
+  // Typing timeout for mascot
+  useEffect(() => {
+    if (isTyping) {
+      const timeout = setTimeout(() => setIsTyping(false), 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [isTyping]);
+
+  const handleInputChange = useCallback((field: "email" | "password", value: string) => {
+    if (field === "email") {
+      setEmail(value);
+      if (errors.email) setErrors(prev => ({ ...prev, email: undefined }));
+    } else {
+      setPassword(value);
+      if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
+    }
+    setIsTyping(true);
+    setMascotState("typing");
+  }, [errors]);
+
   const validateForm = () => {
-    const result = authSchema.safeParse({ email, password });
-    if (!result.success) {
-      const fieldErrors: { email?: string; password?: string } = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0] === "email") fieldErrors.email = err.message;
-        if (err.path[0] === "password") fieldErrors.password = err.message;
-      });
-      setErrors(fieldErrors);
+    const newErrors: { email?: string; password?: string } = {};
+    
+    // Validate email
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      newErrors.email = emailResult.error.errors[0].message;
+    }
+    
+    // Validate password
+    if (!isLogin) {
+      const passwordValidation = validatePasswordStrength(password);
+      if (!passwordValidation.isValid) {
+        newErrors.password = passwordValidation.message;
+      }
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+    
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length > 0) {
+      setMascotState("sad");
+      setTimeout(() => setMascotState("idle"), 2000);
       return false;
     }
-    setErrors({});
+    
     return true;
   };
 
@@ -73,6 +136,7 @@ export default function Auth() {
     if (!validateForm()) return;
     
     setIsLoading(true);
+    setMascotState("thinking");
 
     try {
       const { error } = isLogin 
@@ -85,10 +149,17 @@ export default function Auth() {
         // Handle common error cases with friendly messages
         if (error.message.includes("Invalid login credentials")) {
           errorMessage = "Invalid email or password. Please try again.";
+          setMascotState("sad");
         } else if (error.message.includes("User already registered")) {
           errorMessage = "An account with this email already exists. Please sign in instead.";
+          setMascotState("sad");
         } else if (error.message.includes("Email not confirmed")) {
           errorMessage = "Please check your email to confirm your account.";
+          setShowVerificationBanner(true);
+          setVerificationEmail(email);
+          setMascotState("thinking");
+        } else {
+          setMascotState("sad");
         }
 
         toast({
@@ -96,23 +167,36 @@ export default function Auth() {
           description: errorMessage,
           variant: "destructive",
         });
+        
+        setTimeout(() => setMascotState("idle"), 3000);
         return;
       }
 
       if (!isLogin) {
+        // Show verification banner for new signups
+        setShowVerificationBanner(true);
+        setVerificationEmail(email);
+        setMascotState("celebration");
         toast({
-          title: "Account Created",
-          description: "Welcome to Health Hub! You're now signed in.",
+          title: "Account Created!",
+          description: "Please check your email to verify your account.",
         });
+      } else {
+        setMascotState("celebration");
+        toast({
+          title: "Welcome Back!",
+          description: "You've successfully signed in.",
+        });
+        setTimeout(() => navigate("/", { replace: true }), 500);
       }
-      
-      navigate("/", { replace: true });
     } catch (error) {
+      setMascotState("sad");
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+      setTimeout(() => setMascotState("idle"), 3000);
     } finally {
       setIsLoading(false);
     }
@@ -126,6 +210,45 @@ export default function Auth() {
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         >
           <Loader2 className="h-10 w-10 text-primary" />
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Show verification banner if needed
+  if (showVerificationBanner) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 flex flex-col items-center justify-center p-4 overflow-hidden relative">
+        <FloatingOrb delay={0} size="w-96 h-96" color="bg-primary" position="top-0 left-0 -translate-x-1/2 -translate-y-1/2" />
+        <FloatingOrb delay={2} size="w-80 h-80" color="bg-health-teal" position="bottom-0 right-0 translate-x-1/3 translate-y-1/3" />
+        
+        <motion.div 
+          className="mb-8"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", delay: 0.2 }}
+        >
+          <AuthMascot state="celebration" className="w-24 h-24" />
+        </motion.div>
+        
+        <EmailVerificationBanner email={verificationEmail} />
+        
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-6"
+        >
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setShowVerificationBanner(false);
+              setIsLogin(true);
+              setMascotState("wave");
+            }}
+          >
+            Back to Sign In
+          </Button>
         </motion.div>
       </div>
     );
@@ -147,30 +270,42 @@ export default function Auth() {
         transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="w-full max-w-md relative z-10"
       >
-        {/* Logo section with animation */}
+        {/* Logo section with mascot */}
         <motion.div 
-          className="text-center mb-8"
+          className="text-center mb-6"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
         >
-          <motion.div 
-            className="inline-flex items-center justify-center h-16 w-16 rounded-2xl gradient-bg mb-4 shadow-glow"
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            whileTap={{ scale: 0.95 }}
-            animate={{
-              boxShadow: [
-                "0 0 20px rgba(var(--primary), 0.3)",
-                "0 0 40px rgba(var(--primary), 0.5)",
-                "0 0 20px rgba(var(--primary), 0.3)",
-              ],
-            }}
-            transition={{
-              boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-            }}
-          >
-            <Heart className="h-8 w-8 text-primary-foreground" />
-          </motion.div>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <motion.div 
+              className="inline-flex items-center justify-center h-14 w-14 rounded-2xl gradient-bg shadow-glow"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+              animate={{
+                boxShadow: [
+                  "0 0 20px rgba(var(--primary), 0.3)",
+                  "0 0 40px rgba(var(--primary), 0.5)",
+                  "0 0 20px rgba(var(--primary), 0.3)",
+                ],
+              }}
+              transition={{
+                boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+              }}
+            >
+              <Heart className="h-7 w-7 text-primary-foreground" />
+            </motion.div>
+            
+            {/* Mascot */}
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.4, type: "spring" }}
+            >
+              <AuthMascot state={mascotState} className="w-16 h-16" />
+            </motion.div>
+          </div>
+          
           <motion.h1 
             className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text"
             initial={{ opacity: 0 }}
@@ -215,7 +350,21 @@ export default function Auth() {
               </AnimatePresence>
             </CardHeader>
             <CardContent className="pt-4">
-              <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Google Sign In */}
+              <div className="space-y-4">
+                <GoogleAuthButton mode={isLogin ? "login" : "signup"} disabled={isLoading} />
+                
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <motion.div 
                   className="space-y-2"
                   initial={{ opacity: 0, x: -20 }}
@@ -230,10 +379,7 @@ export default function Auth() {
                       type="email"
                       placeholder="you@example.com"
                       value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (errors.email) setErrors({ ...errors, email: undefined });
-                      }}
+                      onChange={(e) => handleInputChange("email", e.target.value)}
                       className={`pl-10 transition-all duration-300 ${errors.email ? 'border-destructive ring-2 ring-destructive/20' : 'focus:ring-2 focus:ring-primary/20'}`}
                       disabled={isLoading}
                     />
@@ -259,7 +405,20 @@ export default function Auth() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 }}
                 >
-                  <Label htmlFor="password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    {isLogin && (
+                      <motion.button
+                        type="button"
+                        onClick={() => setForgotPasswordOpen(true)}
+                        className="text-xs text-primary hover:underline font-medium"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Forgot password?
+                      </motion.button>
+                    )}
+                  </div>
                   <div className="relative group">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                     <Input
@@ -267,10 +426,7 @@ export default function Auth() {
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        if (errors.password) setErrors({ ...errors, password: undefined });
-                      }}
+                      onChange={(e) => handleInputChange("password", e.target.value)}
                       className={`pl-10 pr-10 transition-all duration-300 ${errors.password ? 'border-destructive ring-2 ring-destructive/20' : 'focus:ring-2 focus:ring-primary/20'}`}
                       disabled={isLoading}
                     />
@@ -295,6 +451,13 @@ export default function Auth() {
                         <AlertCircle className="h-3 w-3" />
                         {errors.password}
                       </motion.p>
+                    )}
+                  </AnimatePresence>
+                  
+                  {/* Password strength indicator for signup */}
+                  <AnimatePresence>
+                    {!isLogin && password && (
+                      <PasswordStrengthIndicator password={password} />
                     )}
                   </AnimatePresence>
                 </motion.div>
@@ -348,6 +511,8 @@ export default function Auth() {
                     onClick={() => {
                       setIsLogin(!isLogin);
                       setErrors({});
+                      setPassword("");
+                      setMascotState("wave");
                     }}
                     className="text-primary hover:underline font-semibold relative"
                     disabled={isLoading}
@@ -387,6 +552,12 @@ export default function Auth() {
           ))}
         </motion.div>
       </motion.div>
+
+      {/* Forgot Password Dialog */}
+      <ForgotPasswordDialog 
+        open={forgotPasswordOpen} 
+        onOpenChange={setForgotPasswordOpen} 
+      />
     </div>
   );
 }
