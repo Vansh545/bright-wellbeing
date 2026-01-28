@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ApiKeySettings } from "@/components/settings/ApiKeySettings";
+import { AuthProviderSettings } from "@/components/settings/AuthProviderSettings";
 
 const containerVariants = {
   initial: { opacity: 0 },
@@ -435,7 +436,12 @@ export default function Settings() {
           </Card>
         </motion.div>
 
-        {/* API Integrations - New Section */}
+        {/* Authentication Providers Section */}
+        <motion.div variants={itemVariants}>
+          <AuthProviderSettings />
+        </motion.div>
+
+        {/* API Integrations Section */}
         <motion.div variants={itemVariants}>
           <ApiKeySettings />
         </motion.div>
