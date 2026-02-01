@@ -9,14 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 // Auth Components
-import { AuthMascot, type MascotState } from "@/components/auth/AuthMascot";
+import { BearMascot, type BearState } from "@/components/auth/BearMascot";
 import { PasswordStrengthIndicator, validatePasswordStrength } from "@/components/auth/PasswordStrengthIndicator";
 import { ForgotPasswordDialog } from "@/components/auth/ForgotPasswordDialog";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
-import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
+import { OtpVerificationScreen } from "@/components/auth/OtpVerificationScreen";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 
@@ -42,7 +43,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { user, signIn, signUp, loading: authLoading } = useAuth();
+  const { user, signIn, loading: authLoading } = useAuth();
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -50,10 +51,11 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const [mascotState, setMascotState] = useState<MascotState>("wave");
+  const [mascotState, setMascotState] = useState<BearState>("wave");
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
-  const [showVerificationBanner, setShowVerificationBanner] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState("");
+  const [showOtpVerification, setShowOtpVerification] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingPassword, setPendingPassword] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
   // Check for password reset redirect
@@ -139,55 +141,66 @@ export default function Auth() {
     setMascotState("thinking");
 
     try {
-      const { error } = isLogin 
-        ? await signIn(email, password)
-        : await signUp(email, password);
+      if (isLogin) {
+        // Login flow
+        const { error } = await signIn(email, password);
 
-      if (error) {
-        let errorMessage = error.message;
-        
-        // Handle common error cases with friendly messages
-        if (error.message.includes("Invalid login credentials")) {
-          errorMessage = "Invalid email or password. Please try again.";
-          setMascotState("sad");
-        } else if (error.message.includes("User already registered")) {
-          errorMessage = "An account with this email already exists. Please sign in instead.";
-          setMascotState("sad");
-        } else if (error.message.includes("Email not confirmed")) {
-          errorMessage = "Please check your email to confirm your account.";
-          setShowVerificationBanner(true);
-          setVerificationEmail(email);
-          setMascotState("thinking");
-        } else {
-          setMascotState("sad");
+        if (error) {
+          let errorMessage = error.message;
+          
+          if (error.message.includes("Invalid login credentials")) {
+            errorMessage = "Invalid email or password. Please try again.";
+            setMascotState("sad");
+          } else if (error.message.includes("Email not confirmed")) {
+            errorMessage = "Please verify your email before signing in.";
+            setMascotState("sad");
+          } else {
+            setMascotState("sad");
+          }
+
+          toast({
+            title: "Sign In Failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          
+          setTimeout(() => setMascotState("idle"), 3000);
+          return;
         }
 
-        toast({
-          title: isLogin ? "Sign In Failed" : "Sign Up Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        
-        setTimeout(() => setMascotState("idle"), 3000);
-        return;
-      }
-
-      if (!isLogin) {
-        // Show verification banner for new signups
-        setShowVerificationBanner(true);
-        setVerificationEmail(email);
-        setMascotState("celebration");
-        toast({
-          title: "Account Created!",
-          description: "Please check your email to verify your account.",
-        });
-      } else {
         setMascotState("celebration");
         toast({
           title: "Welcome Back!",
           description: "You've successfully signed in.",
         });
         setTimeout(() => navigate("/", { replace: true }), 500);
+      } else {
+        // Signup flow - send OTP first
+        const { data, error: otpError } = await supabase.functions.invoke("send-otp", {
+          body: { email },
+        });
+
+        if (otpError || data?.error) {
+          const errorMessage = data?.error || "Failed to send verification code. Please try again.";
+          setMascotState("sad");
+          toast({
+            title: "Sign Up Failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          setTimeout(() => setMascotState("idle"), 3000);
+          return;
+        }
+
+        // Show OTP verification screen
+        setPendingEmail(email);
+        setPendingPassword(password);
+        setShowOtpVerification(true);
+        setMascotState("happy");
+        toast({
+          title: "Verification Code Sent!",
+          description: "Please check your email for the 6-digit code.",
+        });
       }
     } catch (error) {
       setMascotState("sad");
@@ -200,6 +213,15 @@ export default function Auth() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOtpVerified = () => {
+    navigate("/", { replace: true });
+  };
+
+  const handleOtpBack = () => {
+    setShowOtpVerification(false);
+    setMascotState("wave");
   };
 
   if (authLoading) {
@@ -215,41 +237,19 @@ export default function Auth() {
     );
   }
 
-  // Show verification banner if needed
-  if (showVerificationBanner) {
+  // Show OTP verification screen
+  if (showOtpVerification) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 flex flex-col items-center justify-center p-4 overflow-hidden relative">
         <FloatingOrb delay={0} size="w-96 h-96" color="bg-primary" position="top-0 left-0 -translate-x-1/2 -translate-y-1/2" />
         <FloatingOrb delay={2} size="w-80 h-80" color="bg-health-teal" position="bottom-0 right-0 translate-x-1/3 translate-y-1/3" />
         
-        <motion.div 
-          className="mb-8"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", delay: 0.2 }}
-        >
-          <AuthMascot state="celebration" className="w-24 h-24" />
-        </motion.div>
-        
-        <EmailVerificationBanner email={verificationEmail} />
-        
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-6"
-        >
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setShowVerificationBanner(false);
-              setIsLogin(true);
-              setMascotState("wave");
-            }}
-          >
-            Back to Sign In
-          </Button>
-        </motion.div>
+        <OtpVerificationScreen
+          email={pendingEmail}
+          password={pendingPassword}
+          onVerified={handleOtpVerified}
+          onBack={handleOtpBack}
+        />
       </div>
     );
   }
@@ -270,7 +270,7 @@ export default function Auth() {
         transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="w-full max-w-md relative z-10"
       >
-        {/* Logo section with mascot */}
+        {/* Logo section */}
         <motion.div 
           className="text-center mb-6"
           initial={{ opacity: 0, y: -20 }}
@@ -294,15 +294,6 @@ export default function Auth() {
               }}
             >
               <Heart className="h-7 w-7 text-primary-foreground" />
-            </motion.div>
-            
-            {/* Mascot */}
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.4, type: "spring" }}
-            >
-              <AuthMascot state={mascotState} className="w-16 h-16" />
             </motion.div>
           </div>
           
@@ -329,9 +320,20 @@ export default function Auth() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
+          className="relative"
         >
+          {/* Bear mascot positioned at upper-left corner of card */}
+          <motion.div
+            className="absolute -top-8 -left-4 z-20"
+            initial={{ scale: 0, opacity: 0, rotate: -20 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+          >
+            <BearMascot state={mascotState} className="w-20 h-20 drop-shadow-lg" />
+          </motion.div>
+
           <Card className="backdrop-blur-xl bg-card/80 border-border/50 shadow-2xl">
-            <CardHeader className="text-center pb-2">
+            <CardHeader className="text-center pb-2 pt-6">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={isLogin ? "login" : "signup"}
@@ -405,20 +407,7 @@ export default function Auth() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 }}
                 >
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
-                    {isLogin && (
-                      <motion.button
-                        type="button"
-                        onClick={() => setForgotPasswordOpen(true)}
-                        className="text-xs text-primary hover:underline font-medium"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        Forgot password?
-                      </motion.button>
-                    )}
-                  </div>
+                  <Label htmlFor="password">Password</Label>
                   <div className="relative group">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                     <Input
@@ -440,6 +429,7 @@ export default function Auth() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </motion.button>
                   </div>
+                  
                   <AnimatePresence>
                     {errors.password && (
                       <motion.p 
@@ -460,6 +450,25 @@ export default function Auth() {
                       <PasswordStrengthIndicator password={password} />
                     )}
                   </AnimatePresence>
+
+                  {/* Forgot password link - BELOW password field */}
+                  {isLogin && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex justify-end pt-1"
+                    >
+                      <motion.button
+                        type="button"
+                        onClick={() => setForgotPasswordOpen(true)}
+                        className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Forgot password?
+                      </motion.button>
+                    </motion.div>
+                  )}
                 </motion.div>
 
                 <motion.div
@@ -487,7 +496,7 @@ export default function Auth() {
                         animate={{ opacity: 1 }}
                       >
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        {isLogin ? "Signing in..." : "Creating account..."}
+                        {isLogin ? "Signing in..." : "Sending code..."}
                       </motion.span>
                     ) : (
                       <span className="relative z-10">
