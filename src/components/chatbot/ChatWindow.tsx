@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { useActivityLogs } from "@/hooks/useActivityLogs";
 
 interface Message {
   id: string;
@@ -28,6 +30,7 @@ const contextualGreetings: Record<string, string> = {
   "/ai-consultant": "Ready for personalized health advice? I'm here to guide you!",
   "/settings": "Need help with settings or app configuration?",
   "/import": "Need help importing data from your devices or apps?",
+  "/health-tracking": "Tracking your health data? I can help with vital signs, symptoms, or medication tracking!",
 };
 
 const proactiveTips = [
@@ -46,6 +49,10 @@ export function ChatWindow({ isOpen, onClose, currentContext = "/" }: ChatWindow
   const [hasShownGreeting, setHasShownGreeting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const { profile, streak } = useUserProfile();
+  const { getWeeklyStats } = useActivityLogs();
+  const weeklyStats = getWeeklyStats();
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -54,21 +61,34 @@ export function ChatWindow({ isOpen, onClose, currentContext = "/" }: ChatWindow
     scrollToBottom();
   }, [messages]);
 
-  // Show greeting on first open
+  // Show greeting on first open with personalized context
   useEffect(() => {
     if (isOpen && !hasShownGreeting) {
       const greeting = contextualGreetings[currentContext] || contextualGreetings["/"];
+      
+      let personalizedGreeting = `Hi! 👋 I'm your wellbeing guide.\n\n${greeting}`;
+      
+      // Add personalized context based on user data
+      if (profile) {
+        if (streak && streak.current_streak > 0) {
+          personalizedGreeting += `\n\n🔥 Great job on your ${streak.current_streak}-day streak!`;
+        }
+        if (weeklyStats.totalWorkouts > 0) {
+          personalizedGreeting += ` You've done ${weeklyStats.totalWorkouts} workouts this week.`;
+        }
+      }
+      
       setMessages([
         {
           id: "welcome",
           role: "assistant",
-          content: `Hi! 👋 I'm your wellbeing guide. Ask me anything you need help with.\n\n${greeting}`,
+          content: personalizedGreeting,
           timestamp: new Date(),
         },
       ]);
       setHasShownGreeting(true);
     }
-  }, [isOpen, hasShownGreeting, currentContext]);
+  }, [isOpen, hasShownGreeting, currentContext, profile, streak, weeklyStats]);
 
   // Show proactive tip occasionally
   useEffect(() => {
@@ -111,14 +131,24 @@ export function ChatWindow({ isOpen, onClose, currentContext = "/" }: ChatWindow
           content: msg.content,
         }));
 
-      // Add context about current page
-      const contextMessage = `User is currently viewing: ${currentContext}. ${input}`;
+      // Build user context for AI
+      let userContext = `User is currently viewing: ${currentContext}.`;
+      
+      if (profile) {
+        userContext += ` User profile: Goal is ${profile.fitness_goal?.replace('_', ' ')}, activity level ${profile.activity_level}.`;
+        if (streak) {
+          userContext += ` Current streak: ${streak.current_streak} days, longest: ${streak.longest_streak} days.`;
+        }
+        userContext += ` This week: ${weeklyStats.totalWorkouts} workouts, ${weeklyStats.totalCalories} calories burned, ${weeklyStats.activeDays} active days.`;
+      }
+      
+      userContext += ` Question: ${input}`;
 
       const { data, error } = await supabase.functions.invoke("wellness-chat", {
         body: {
           messages: [
             ...apiMessages.slice(0, -1),
-            { role: "user", content: contextMessage },
+            { role: "user", content: userContext },
           ],
         },
       });

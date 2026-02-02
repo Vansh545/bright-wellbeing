@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "./Sidebar";
 import { Menu, Heart } from "lucide-react";
 import { GlobalChatbot } from "@/components/chatbot/GlobalChatbot";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { Button } from "@/components/ui/button";
 
 interface AppLayoutProps {
@@ -11,9 +16,20 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { needsOnboarding, refetch } = useUserProfile();
+
+  const handleOnboardingComplete = () => {
+    refetch();
+  };
 
   return (
     <div className="min-h-screen flex w-full bg-background mesh-gradient">
+      {/* Onboarding Wizard */}
+      {needsOnboarding && (
+        <OnboardingWizard onComplete={handleOnboardingComplete} />
+      )}
+
       {/* Mobile sidebar backdrop */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -69,9 +85,14 @@ export function AppLayout({ children }: AppLayoutProps) {
               </motion.div>
               <span className="font-semibold text-foreground">HealthHub</span>
             </motion.div>
-            <div className="w-10" />
+            <NotificationBell onClick={() => setNotificationsOpen(true)} />
           </div>
         </motion.header>
+
+        {/* Desktop notification bell (positioned in top right) */}
+        <div className="hidden lg:block fixed top-4 right-4 z-30">
+          <NotificationBell onClick={() => setNotificationsOpen(true)} />
+        </div>
 
         {/* Page content with animation */}
         <motion.main 
@@ -86,8 +107,17 @@ export function AppLayout({ children }: AppLayoutProps) {
         </motion.main>
       </div>
 
+      {/* Notification Center */}
+      <NotificationCenter 
+        isOpen={notificationsOpen} 
+        onClose={() => setNotificationsOpen(false)} 
+      />
+
       {/* Global AI Chatbot */}
       <GlobalChatbot />
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 }
