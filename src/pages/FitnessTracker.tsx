@@ -7,6 +7,7 @@ import { PersonalProfileSetup } from "@/components/fitness/PersonalProfileSetup"
 import { FitnessWorkoutsTab } from "@/components/fitness/FitnessWorkoutsTab";
 import { VideoTutorialTab } from "@/components/videos/VideoTutorialTab";
 import { SavedVideosSection } from "@/components/videos/SavedVideosSection";
+import { ActivityLogger } from "@/components/fitness/ActivityLogger";
 
 const tabs = [
   { id: "workouts", label: "Workouts", icon: Dumbbell },
@@ -39,6 +40,16 @@ export default function FitnessTracker() {
             onTabChange={setActiveTab}
           />
         </div>
+
+        {/* Activity Logger - Always visible */}
+        {activeTab === "workouts" && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <ActivityLogger />
+          </motion.div>
+        )}
 
         {/* Tab Content */}
         <AnimatePresence mode="wait">

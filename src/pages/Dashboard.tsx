@@ -21,6 +21,7 @@ import {
   Footprints,
   Timer,
   ArrowUpRight,
+  CalendarCheck,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -28,6 +29,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { SmartInsights } from "@/components/dashboard/SmartInsights";
+import { AchievementBadges } from "@/components/dashboard/AchievementBadges";
+import { WeeklyCheckIn } from "@/components/dashboard/WeeklyCheckIn";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { useActivityLogs } from "@/hooks/useActivityLogs";
 import {
   AreaChart,
   Area,
@@ -45,23 +51,6 @@ const motivationalQuotes = [
   "Wellness is the complete integration of body, mind, and spirit.",
 ];
 
-const weeklyData = [
-  { day: "Mon", workouts: 2, calories: 320 },
-  { day: "Tue", workouts: 1, calories: 180 },
-  { day: "Wed", workouts: 3, calories: 450 },
-  { day: "Thu", workouts: 2, calories: 290 },
-  { day: "Fri", workouts: 1, calories: 150 },
-  { day: "Sat", workouts: 4, calories: 520 },
-  { day: "Sun", workouts: 2, calories: 280 },
-];
-
-const recentActivities = [
-  { id: 1, type: "Workout", description: "Morning cardio session", time: "2 hours ago", icon: Dumbbell, color: "bg-health-coral" },
-  { id: 2, type: "Skincare", description: "Evening routine completed", time: "5 hours ago", icon: Sparkles, color: "bg-health-purple" },
-  { id: 3, type: "AI Consultation", description: "Nutrition advice received", time: "Yesterday", icon: Bot, color: "bg-health-teal" },
-  { id: 4, type: "Workout", description: "Strength training", time: "Yesterday", icon: Dumbbell, color: "bg-health-blue" },
-];
-
 const todaySchedule = [
   { time: "7:00 AM", task: "Morning stretch routine", completed: true },
   { time: "12:00 PM", task: "Midday skincare check", completed: true },
@@ -69,17 +58,37 @@ const todaySchedule = [
   { time: "9:00 PM", task: "Night skincare routine", completed: false },
 ];
 
-const quickStats = [
-  { label: "Steps Today", value: "8,432", target: "10,000", icon: Footprints, color: "health-teal", progress: 84 },
-  { label: "Water Intake", value: "6", target: "8 glasses", icon: Droplets, color: "health-blue", progress: 75 },
-  { label: "Active Minutes", value: "45", target: "60 min", icon: Timer, color: "health-coral", progress: 75 },
-  { label: "Calories", value: "1,890", target: "2,200", icon: Flame, color: "health-purple", progress: 86 },
-];
-
 export default function Dashboard() {
   const [greeting, setGreeting] = useState("Good morning");
   const [quote, setQuote] = useState("");
   const [timeIcon, setTimeIcon] = useState<typeof Sun | typeof Moon>(Sun);
+  const [showCheckIn, setShowCheckIn] = useState(false);
+
+  const { profile, streak } = useUserProfile();
+  const { getWeeklyStats, getActivityByDay, activities } = useActivityLogs();
+
+  const weeklyStats = getWeeklyStats();
+  const weeklyData = getActivityByDay();
+
+  // Check if weekly check-in is needed (once per week)
+  useEffect(() => {
+    const lastCheckIn = localStorage.getItem('lastWeeklyCheckIn');
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    if (!lastCheckIn || new Date(lastCheckIn) < startOfWeek) {
+      // Show check-in after a delay
+      const timer = setTimeout(() => setShowCheckIn(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleCheckInComplete = () => {
+    setShowCheckIn(false);
+    localStorage.setItem('lastWeeklyCheckIn', new Date().toISOString());
+  };
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -114,8 +123,38 @@ export default function Dashboard() {
 
   const TimeIcon = timeIcon;
 
+  // Calculate dynamic stats
+  const currentStreak = streak?.current_streak || 0;
+  const longestStreak = streak?.longest_streak || 0;
+  const userName = profile?.gender === 'male' ? 'there' : profile?.gender === 'female' ? 'there' : 'there';
+
+  const quickStats = [
+    { label: "Steps Today", value: "8,432", target: "10,000", icon: Footprints, color: "health-teal", progress: 84 },
+    { label: "Water Intake", value: "6", target: "8 glasses", icon: Droplets, color: "health-blue", progress: 75 },
+    { label: "Active Minutes", value: String(weeklyStats.totalMinutes), target: "60 min", icon: Timer, color: "health-coral", progress: Math.min(100, (weeklyStats.totalMinutes / 60) * 100) },
+    { label: "Calories", value: weeklyStats.totalCalories.toLocaleString(), target: "2,200", icon: Flame, color: "health-purple", progress: Math.min(100, (weeklyStats.totalCalories / 2200) * 100) },
+  ];
+
+  // Get recent activities from real data
+  const recentActivities = activities.slice(0, 4).map((activity, index) => ({
+    id: activity.id,
+    type: activity.activity_type,
+    description: activity.activity_name,
+    time: new Date(activity.logged_at).toLocaleDateString(),
+    icon: activity.activity_type === 'workout' ? Dumbbell : activity.activity_type === 'skincare' ? Sparkles : Activity,
+    color: index % 4 === 0 ? "bg-health-coral" : index % 4 === 1 ? "bg-health-purple" : index % 4 === 2 ? "bg-health-teal" : "bg-health-blue",
+  }));
+
   return (
     <AppLayout>
+      {/* Weekly Check-In Modal */}
+      {showCheckIn && (
+        <WeeklyCheckIn 
+          onClose={() => setShowCheckIn(false)} 
+          onComplete={handleCheckInComplete} 
+        />
+      )}
+
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -141,7 +180,7 @@ export default function Dashboard() {
                     <span className="text-sm font-medium text-primary-foreground/90">{greeting}</span>
                   </div>
                   <h1 className="text-3xl lg:text-4xl font-bold text-primary-foreground font-display tracking-tight">
-                    Welcome back, John! 
+                    Welcome back! 
                     <span className="inline-block animate-bounce-subtle ml-2">👋</span>
                   </h1>
                   <p className="text-primary-foreground/80 max-w-lg text-lg italic">
@@ -150,12 +189,20 @@ export default function Dashboard() {
                   <div className="flex items-center gap-3 pt-2">
                     <Badge className="bg-white/20 text-primary-foreground border-0 backdrop-blur px-3 py-1">
                       <Trophy className="h-3.5 w-3.5 mr-1.5" />
-                      7 Day Streak
+                      {currentStreak} Day Streak
                     </Badge>
-                    <Badge className="bg-white/20 text-primary-foreground border-0 backdrop-blur px-3 py-1">
-                      <Zap className="h-3.5 w-3.5 mr-1.5" />
-                      Level 12
-                    </Badge>
+                    {longestStreak > 0 && (
+                      <Badge className="bg-white/20 text-primary-foreground border-0 backdrop-blur px-3 py-1">
+                        <Zap className="h-3.5 w-3.5 mr-1.5" />
+                        Best: {longestStreak} days
+                      </Badge>
+                    )}
+                    {profile?.fitness_goal && (
+                      <Badge className="bg-white/20 text-primary-foreground border-0 backdrop-blur px-3 py-1">
+                        <Target className="h-3.5 w-3.5 mr-1.5" />
+                        {profile.fitness_goal.replace('_', ' ')}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="hidden lg:flex items-center gap-4">
@@ -164,7 +211,7 @@ export default function Dashboard() {
                       <Heart className="h-14 w-14 text-primary-foreground" />
                     </div>
                     <div className="absolute -top-2 -right-2 h-10 w-10 rounded-xl bg-health-yellow flex items-center justify-center shadow-md animate-bounce-subtle">
-                      <span className="text-foreground font-bold text-sm">95</span>
+                      <span className="text-foreground font-bold text-sm">{Math.min(100, 70 + weeklyStats.activeDays * 5)}</span>
                     </div>
                   </div>
                 </div>
@@ -206,9 +253,9 @@ export default function Dashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Workouts This Week</p>
-                  <p className="text-3xl font-bold text-foreground font-display">15</p>
+                  <p className="text-3xl font-bold text-foreground font-display">{weeklyStats.totalWorkouts}</p>
                   <p className="text-xs text-health-teal flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-3.5 w-3.5" /> +12% from last week
+                    <TrendingUp className="h-3.5 w-3.5" /> {weeklyStats.activeDays} active days
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-2xl gradient-bg flex items-center justify-center shadow-md">
@@ -221,9 +268,9 @@ export default function Dashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Calories Burned</p>
-                  <p className="text-3xl font-bold text-foreground font-display">2,190</p>
+                  <p className="text-3xl font-bold text-foreground font-display">{weeklyStats.totalCalories.toLocaleString()}</p>
                   <p className="text-xs text-health-coral flex items-center gap-1 mt-2">
-                    <Flame className="h-3.5 w-3.5" /> 890 today
+                    <Flame className="h-3.5 w-3.5" /> This week
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-2xl gradient-accent flex items-center justify-center shadow-md">
@@ -236,9 +283,10 @@ export default function Dashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Current Streak</p>
-                  <p className="text-3xl font-bold text-foreground font-display">7 days</p>
+                  <p className="text-3xl font-bold text-foreground font-display">{currentStreak} days</p>
                   <p className="text-xs text-health-purple flex items-center gap-1 mt-2">
-                    <Target className="h-3.5 w-3.5" /> Personal best!
+                    <Target className="h-3.5 w-3.5" /> 
+                    {currentStreak >= longestStreak && longestStreak > 0 ? 'Personal best!' : `Best: ${longestStreak}`}
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-2xl gradient-purple flex items-center justify-center shadow-md">
@@ -250,19 +298,83 @@ export default function Dashboard() {
             <Card className="stat-card bg-health-mint-light border-health-mint/20">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Skin Condition</p>
-                  <p className="text-3xl font-bold text-foreground font-display">Good</p>
+                  <p className="text-sm text-muted-foreground mb-1">Active Minutes</p>
+                  <p className="text-3xl font-bold text-foreground font-display">{weeklyStats.totalMinutes}</p>
                   <p className="text-xs text-health-mint flex items-center gap-1 mt-2">
-                    <Sparkles className="h-3.5 w-3.5" /> Improving
+                    <Sparkles className="h-3.5 w-3.5" /> This week
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-2xl bg-health-mint flex items-center justify-center shadow-md">
-                  <Sparkles className="h-6 w-6 text-primary-foreground" />
+                  <Timer className="h-6 w-6 text-primary-foreground" />
                 </div>
               </div>
             </Card>
           </div>
         </motion.div>
+
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Smart Insights */}
+          <motion.div variants={itemVariants} className="lg:col-span-1">
+            <SmartInsights />
+          </motion.div>
+
+          {/* Quick Actions */}
+          <motion.div variants={itemVariants} className="lg:col-span-2">
+            <Card className="h-full card-elevated">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-xl gradient-accent flex items-center justify-center">
+                    <Zap className="h-4 w-4 text-primary-foreground" />
+                  </div>
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Link to="/ai-consultant" className="block">
+                    <div className="action-btn bg-health-teal-light group h-full">
+                      <div className="h-14 w-14 rounded-2xl gradient-bg flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg">
+                        <Bot className="h-7 w-7 text-primary-foreground" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">AI Consultation</span>
+                      <span className="text-xs text-muted-foreground">Get personalized advice</span>
+                    </div>
+                  </Link>
+                  <Link to="/chatbot" className="block">
+                    <div className="action-btn bg-health-blue-light group h-full">
+                      <div className="h-14 w-14 rounded-2xl gradient-blue flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg">
+                        <MessageSquare className="h-7 w-7 text-primary-foreground" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Chat with AI</span>
+                      <span className="text-xs text-muted-foreground">24/7 wellness support</span>
+                    </div>
+                  </Link>
+                  <Link to="/fitness" className="block">
+                    <div className="action-btn bg-health-coral-light group h-full">
+                      <div className="h-14 w-14 rounded-2xl gradient-sunset flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg">
+                        <Dumbbell className="h-7 w-7 text-primary-foreground" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Log Workout</span>
+                      <span className="text-xs text-muted-foreground">Track your progress</span>
+                    </div>
+                  </Link>
+                  <button 
+                    onClick={() => setShowCheckIn(true)}
+                    className="block w-full text-left"
+                  >
+                    <div className="action-btn bg-health-purple-light group h-full">
+                      <div className="h-14 w-14 rounded-2xl gradient-purple flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg">
+                        <CalendarCheck className="h-7 w-7 text-primary-foreground" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Weekly Check-In</span>
+                      <span className="text-xs text-muted-foreground">How are you feeling?</span>
+                    </div>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Today's Schedule */}
@@ -314,58 +426,9 @@ export default function Dashboard() {
             </Card>
           </motion.div>
 
-          {/* Quick Actions */}
+          {/* Achievement Badges */}
           <motion.div variants={itemVariants} className="lg:col-span-2">
-            <Card className="h-full card-elevated">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-xl gradient-accent flex items-center justify-center">
-                    <Zap className="h-4 w-4 text-primary-foreground" />
-                  </div>
-                  Quick Actions
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Link to="/ai-consultant" className="block">
-                    <div className="action-btn bg-health-teal-light group h-full">
-                      <div className="h-14 w-14 rounded-2xl gradient-bg flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg">
-                        <Bot className="h-7 w-7 text-primary-foreground" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">AI Consultation</span>
-                      <span className="text-xs text-muted-foreground">Get personalized advice</span>
-                    </div>
-                  </Link>
-                  <Link to="/chatbot" className="block">
-                    <div className="action-btn bg-health-blue-light group h-full">
-                      <div className="h-14 w-14 rounded-2xl gradient-blue flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg">
-                        <MessageSquare className="h-7 w-7 text-primary-foreground" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Chat with AI</span>
-                      <span className="text-xs text-muted-foreground">24/7 wellness support</span>
-                    </div>
-                  </Link>
-                  <Link to="/fitness" className="block">
-                    <div className="action-btn bg-health-coral-light group h-full">
-                      <div className="h-14 w-14 rounded-2xl gradient-sunset flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg">
-                        <Dumbbell className="h-7 w-7 text-primary-foreground" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Log Workout</span>
-                      <span className="text-xs text-muted-foreground">Track your progress</span>
-                    </div>
-                  </Link>
-                  <Link to="/skincare" className="block">
-                    <div className="action-btn bg-health-purple-light group h-full">
-                      <div className="h-14 w-14 rounded-2xl gradient-purple flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg">
-                        <Sparkles className="h-7 w-7 text-primary-foreground" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Track Skincare</span>
-                      <span className="text-xs text-muted-foreground">Monitor your routine</span>
-                    </div>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+            <AchievementBadges />
           </motion.div>
         </div>
 
@@ -441,29 +504,43 @@ export default function Dashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {recentActivities.map((activity, index) => (
-                  <motion.div
-                    key={activity.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 hover:bg-muted/50 transition-all duration-300 group cursor-pointer"
-                  >
-                    <div className={`h-11 w-11 rounded-xl ${activity.color} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform`}>
-                      <activity.icon className="h-5 w-5 text-primary-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">{activity.description}</p>
-                        <Badge variant="secondary" className="text-xs">
-                          {activity.type}
-                        </Badge>
+                {recentActivities.length > 0 ? (
+                  recentActivities.map((activity, index) => (
+                    <motion.div
+                      key={activity.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 hover:bg-muted/50 transition-all duration-300 group cursor-pointer"
+                    >
+                      <div className={`h-11 w-11 rounded-xl ${activity.color} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform`}>
+                        <activity.icon className="h-5 w-5 text-primary-foreground" />
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{activity.time}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-foreground">{activity.description}</p>
+                          <Badge variant="secondary" className="text-xs">
+                            {activity.type}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{activity.time}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                      <Activity className="h-6 w-6 text-muted-foreground" />
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </motion.div>
-                ))}
+                    <p className="text-muted-foreground text-sm">No recent activities</p>
+                    <Link to="/fitness">
+                      <Button variant="link" size="sm" className="mt-2">
+                        Log your first activity →
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
