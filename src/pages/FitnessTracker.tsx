@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Dumbbell, User, PlayCircle, Bookmark } from "lucide-react";
+import { Dumbbell, User, PlayCircle, Bookmark, Footprints } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PillTabs, PillTabsContent } from "@/components/ui/pill-tabs";
 import { PersonalProfileSetup } from "@/components/fitness/PersonalProfileSetup";
@@ -8,9 +8,11 @@ import { FitnessWorkoutsTab } from "@/components/fitness/FitnessWorkoutsTab";
 import { VideoTutorialTab } from "@/components/videos/VideoTutorialTab";
 import { SavedVideosSection } from "@/components/videos/SavedVideosSection";
 import { ActivityLogger } from "@/components/fitness/ActivityLogger";
+import { StepTracker } from "@/components/fitness/StepTracker";
 
 const tabs = [
   { id: "workouts", label: "Workouts", icon: Dumbbell },
+  { id: "steps", label: "Step Tracker", icon: Footprints },
   { id: "profile", label: "Profile Setup", icon: User },
   { id: "tutorials", label: "Tutorials", icon: PlayCircle },
   { id: "saved", label: "Saved Videos", icon: Bookmark },
@@ -56,6 +58,13 @@ export default function FitnessTracker() {
           {activeTab === "workouts" && (
             <PillTabsContent key="workouts">
               <FitnessWorkoutsTab />
+            </PillTabsContent>
+          )}
+          {activeTab === "steps" && (
+            <PillTabsContent key="steps">
+              <div className="max-w-md mx-auto">
+                <StepTracker />
+              </div>
             </PillTabsContent>
           )}
           {activeTab === "profile" && (

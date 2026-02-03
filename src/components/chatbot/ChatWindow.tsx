@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
+import { useStepTracking } from "@/hooks/useStepTracking";
 
 interface Message {
   id: string;
@@ -51,6 +52,7 @@ export function ChatWindow({ isOpen, onClose, currentContext = "/" }: ChatWindow
 
   const { profile, streak } = useUserProfile();
   const { getWeeklyStats } = useActivityLogs();
+  const { stepData } = useStepTracking();
   const weeklyStats = getWeeklyStats();
 
   const scrollToBottom = () => {
@@ -140,6 +142,7 @@ export function ChatWindow({ isOpen, onClose, currentContext = "/" }: ChatWindow
           userContext += ` Current streak: ${streak.current_streak} days, longest: ${streak.longest_streak} days.`;
         }
         userContext += ` This week: ${weeklyStats.totalWorkouts} workouts, ${weeklyStats.totalCalories} calories burned, ${weeklyStats.activeDays} active days.`;
+        userContext += ` Today's steps: ${stepData.steps} of ${stepData.goalSteps} (${Math.round(stepData.percentage)}% of goal).`;
       }
       
       userContext += ` Question: ${input}`;

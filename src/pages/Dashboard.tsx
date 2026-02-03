@@ -32,8 +32,10 @@ import { Progress } from "@/components/ui/progress";
 import { SmartInsights } from "@/components/dashboard/SmartInsights";
 import { AchievementBadges } from "@/components/dashboard/AchievementBadges";
 import { WeeklyCheckIn } from "@/components/dashboard/WeeklyCheckIn";
+import { StepSummaryCard } from "@/components/dashboard/StepSummaryCard";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
+import { useStepTracking } from "@/hooks/useStepTracking";
 import {
   AreaChart,
   Area,
@@ -66,6 +68,7 @@ export default function Dashboard() {
 
   const { profile, streak } = useUserProfile();
   const { getWeeklyStats, getActivityByDay, activities } = useActivityLogs();
+  const { stepData } = useStepTracking();
 
   const weeklyStats = getWeeklyStats();
   const weeklyData = getActivityByDay();
@@ -129,7 +132,7 @@ export default function Dashboard() {
   const userName = profile?.gender === 'male' ? 'there' : profile?.gender === 'female' ? 'there' : 'there';
 
   const quickStats = [
-    { label: "Steps Today", value: "8,432", target: "10,000", icon: Footprints, color: "health-teal", progress: 84 },
+    { label: "Steps Today", value: stepData.steps.toLocaleString(), target: stepData.goalSteps.toLocaleString(), icon: Footprints, color: "health-teal", progress: stepData.percentage },
     { label: "Water Intake", value: "6", target: "8 glasses", icon: Droplets, color: "health-blue", progress: 75 },
     { label: "Active Minutes", value: String(weeklyStats.totalMinutes), target: "60 min", icon: Timer, color: "health-coral", progress: Math.min(100, (weeklyStats.totalMinutes / 60) * 100) },
     { label: "Calories", value: weeklyStats.totalCalories.toLocaleString(), target: "2,200", icon: Flame, color: "health-purple", progress: Math.min(100, (weeklyStats.totalCalories / 2200) * 100) },

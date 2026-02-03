@@ -37,6 +37,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ApiKeySettings } from "@/components/settings/ApiKeySettings";
 import { AuthProviderSettings } from "@/components/settings/AuthProviderSettings";
+import { NotificationSettings } from "@/components/settings/NotificationSettings";
 
 const containerVariants = {
   initial: { opacity: 0 },
@@ -281,53 +282,9 @@ export default function Settings() {
           </Card>
         </motion.div>
 
-        {/* Notifications */}
+        {/* Smart Notifications */}
         <motion.div variants={itemVariants}>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <motion.div
-                  animate={{ 
-                    rotate: [0, 10, -10, 0],
-                  }}
-                  transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
-                >
-                  <Bell className="h-5 w-5 text-primary" />
-                </motion.div>
-                Notifications
-              </CardTitle>
-              <CardDescription>Choose what notifications you receive</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {[
-                { key: "workoutReminders", label: "Workout Reminders", description: "Get reminded to complete your daily workout" },
-                { key: "skincareReminders", label: "Skincare Reminders", description: "Never miss your skincare routine" },
-                { key: "weeklyReport", label: "Weekly Progress Report", description: "Receive a summary of your weekly activity" },
-                { key: "aiInsights", label: "AI Insights", description: "Get personalized health tips and recommendations" },
-                { key: "appUpdates", label: "App Updates", description: "Be notified about new features and updates" },
-              ].map((item, index) => (
-                <motion.div 
-                  key={item.key} 
-                  className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-muted/30 transition-colors"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ x: 4 }}
-                >
-                  <div>
-                    <p className="font-medium text-foreground">{item.label}</p>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                  </div>
-                  <Switch
-                    checked={notifications[item.key as keyof typeof notifications]}
-                    onCheckedChange={(checked) =>
-                      setNotifications({ ...notifications, [item.key]: checked })
-                    }
-                  />
-                </motion.div>
-              ))}
-            </CardContent>
-          </Card>
+          <NotificationSettings />
         </motion.div>
 
         {/* Data Management */}
