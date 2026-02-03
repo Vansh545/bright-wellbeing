@@ -107,6 +107,87 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_goals: {
+        Row: {
+          activity_completed_minutes: number
+          activity_goal_minutes: number
+          created_at: string
+          date: string
+          id: string
+          step_goal: number
+          steps_completed: number
+          updated_at: string
+          user_id: string
+          water_completed: number | null
+          water_goal_glasses: number | null
+        }
+        Insert: {
+          activity_completed_minutes?: number
+          activity_goal_minutes?: number
+          created_at?: string
+          date?: string
+          id?: string
+          step_goal?: number
+          steps_completed?: number
+          updated_at?: string
+          user_id: string
+          water_completed?: number | null
+          water_goal_glasses?: number | null
+        }
+        Update: {
+          activity_completed_minutes?: number
+          activity_goal_minutes?: number
+          created_at?: string
+          date?: string
+          id?: string
+          step_goal?: number
+          steps_completed?: number
+          updated_at?: string
+          user_id?: string
+          water_completed?: number | null
+          water_goal_glasses?: number | null
+        }
+        Relationships: []
+      }
+      fitness_connections: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          id: string
+          is_connected: boolean
+          last_sync_at: string | null
+          provider: string
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean
+          last_sync_at?: string | null
+          provider?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean
+          last_sync_at?: string | null
+          provider?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       health_conditions: {
         Row: {
           created_at: string
@@ -185,6 +266,57 @@ export type Database = {
           started_date?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          activity_reminders: boolean
+          created_at: string
+          evening_reflection: boolean
+          id: string
+          last_notification_at: string | null
+          morning_enabled: boolean
+          progress_updates: boolean
+          push_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+          wellness_tips: boolean
+        }
+        Insert: {
+          activity_reminders?: boolean
+          created_at?: string
+          evening_reflection?: boolean
+          id?: string
+          last_notification_at?: string | null
+          morning_enabled?: boolean
+          progress_updates?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+          wellness_tips?: boolean
+        }
+        Update: {
+          activity_reminders?: boolean
+          created_at?: string
+          evening_reflection?: boolean
+          id?: string
+          last_notification_at?: string | null
+          morning_enabled?: boolean
+          progress_updates?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+          wellness_tips?: boolean
         }
         Relationships: []
       }
@@ -317,6 +449,33 @@ export type Database = {
           video_thumbnail?: string | null
           video_title?: string
           video_url?: string | null
+        }
+        Relationships: []
+      }
+      step_logs: {
+        Row: {
+          created_at: string
+          id: string
+          logged_at: string
+          source: string
+          steps: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logged_at?: string
+          source?: string
+          steps?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logged_at?: string
+          source?: string
+          steps?: number
+          user_id?: string
         }
         Relationships: []
       }
