@@ -32,25 +32,43 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedOtp = otp.trim();
+
     // Get the most recent unverified OTP for this email
-    const { data: otpRecord, error: fetchError } = await supabase
+    const { data: otpRecords, error: fetchError } = await supabase
       .from("otp_verifications")
       .select("*")
-      .eq("email", email.toLowerCase())
+      .eq("email", normalizedEmail)
       .eq("verified", false)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
-    if (fetchError || !otpRecord) {
+    if (fetchError) {
+      console.error("Error fetching OTP:", fetchError);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify code. Please try again." }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (!otpRecords || otpRecords.length === 0) {
       return new Response(
         JSON.stringify({ error: "No pending verification found. Please request a new code." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
+    const otpRecord = otpRecords[0];
+
     // Check if OTP has expired
     if (new Date(otpRecord.expires_at) < new Date()) {
+      // Mark as verified (used) to clean up
+      await supabase
+        .from("otp_verifications")
+        .update({ verified: true })
+        .eq("id", otpRecord.id);
+
       return new Response(
         JSON.stringify({ error: "Verification code has expired. Please request a new one." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -59,7 +77,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Check attempt limit (max 5 attempts)
     if (otpRecord.attempts >= 5) {
-      // Mark as verified (used up) to prevent further attempts
       await supabase
         .from("otp_verifications")
         .update({ verified: true })
@@ -71,18 +88,24 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Increment attempt count
-    await supabase
+    // Increment attempt count first
+    const { error: updateError } = await supabase
       .from("otp_verifications")
       .update({ attempts: otpRecord.attempts + 1 })
       .eq("id", otpRecord.id);
 
-    // Verify OTP
-    if (otpRecord.otp_code !== otp.trim()) {
+    if (updateError) {
+      console.error("Error updating attempts:", updateError);
+    }
+
+    // Verify OTP - compare as strings
+    if (otpRecord.otp_code !== normalizedOtp) {
       const remainingAttempts = 4 - otpRecord.attempts;
       return new Response(
         JSON.stringify({ 
-          error: `Invalid verification code. ${remainingAttempts} attempt${remainingAttempts !== 1 ? 's' : ''} remaining.` 
+          error: remainingAttempts > 0 
+            ? `Invalid verification code. ${remainingAttempts} attempt${remainingAttempts !== 1 ? 's' : ''} remaining.`
+            : "Invalid verification code. Please request a new one."
         }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
@@ -94,34 +117,41 @@ const handler = async (req: Request): Promise<Response> => {
       .update({ verified: true })
       .eq("id", otpRecord.id);
 
+    // Check if user already exists
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    const userExists = existingUsers?.users?.some(u => u.email?.toLowerCase() === normalizedEmail);
+
+    if (userExists) {
+      return new Response(
+        JSON.stringify({ error: "An account with this email already exists. Please sign in instead." }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Create the user account with email already confirmed
     const { data: authData, error: signUpError } = await supabase.auth.admin.createUser({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password: password,
-      email_confirm: true, // Auto-confirm since OTP verified
+      email_confirm: true,
     });
 
     if (signUpError) {
-      // Check if user already exists
-      if (signUpError.message.includes("already been registered")) {
+      console.error("Error creating user:", signUpError);
+      
+      if (signUpError.message.includes("already been registered") || signUpError.message.includes("already exists")) {
         return new Response(
           JSON.stringify({ error: "An account with this email already exists. Please sign in instead." }),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
       
-      console.error("Error creating user:", signUpError);
       return new Response(
         JSON.stringify({ error: "Failed to create account. Please try again." }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Generate session for the user
-    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
-      type: "magiclink",
-      email: email.toLowerCase(),
-    });
+    console.log("User created successfully:", authData.user?.id);
 
     return new Response(
       JSON.stringify({ 

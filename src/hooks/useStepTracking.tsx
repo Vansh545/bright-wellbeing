@@ -28,6 +28,60 @@ export interface FitnessConnection {
   last_sync_at: string | null;
 }
 
+// Step detection algorithm with noise filtering
+class StepDetector {
+  private readonly threshold = 1.8; // Higher threshold to avoid false positives
+  private readonly minStepInterval = 250; // Minimum ms between steps (prevents double counting)
+  private lastStepTime = 0;
+  private lastMagnitude = 0;
+  private peakDetected = false;
+  private samples: number[] = [];
+  private readonly sampleSize = 5; // Moving average window
+
+  detectStep(x: number, y: number, z: number): boolean {
+    // Calculate magnitude
+    const magnitude = Math.sqrt(x * x + y * y + z * z);
+    
+    // Add to moving average
+    this.samples.push(magnitude);
+    if (this.samples.length > this.sampleSize) {
+      this.samples.shift();
+    }
+
+    // Calculate moving average
+    const avgMagnitude = this.samples.reduce((a, b) => a + b, 0) / this.samples.length;
+    
+    // Calculate deviation from average (helps filter noise)
+    const deviation = Math.abs(magnitude - avgMagnitude);
+    
+    const now = Date.now();
+    const timeSinceLastStep = now - this.lastStepTime;
+
+    // Peak detection with debouncing
+    if (deviation > this.threshold && !this.peakDetected && timeSinceLastStep > this.minStepInterval) {
+      this.peakDetected = true;
+      this.lastStepTime = now;
+      this.lastMagnitude = magnitude;
+      return true;
+    }
+
+    // Reset peak detection when magnitude drops
+    if (deviation < this.threshold / 2) {
+      this.peakDetected = false;
+    }
+
+    this.lastMagnitude = magnitude;
+    return false;
+  }
+
+  reset() {
+    this.samples = [];
+    this.lastStepTime = 0;
+    this.lastMagnitude = 0;
+    this.peakDetected = false;
+  }
+}
+
 export function useStepTracking() {
   const { user } = useAuth();
   const [stepData, setStepData] = useState<StepData>({
@@ -41,10 +95,9 @@ export function useStepTracking() {
   const [isTracking, setIsTracking] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // Device motion tracking refs
-  const stepCountRef = useRef(0);
-  const lastAccelRef = useRef({ x: 0, y: 0, z: 0 });
-  const stepThreshold = 1.2; // Acceleration threshold for step detection
+  // Step detector instance
+  const stepDetectorRef = useRef(new StepDetector());
+  const baseStepsRef = useRef(0); // Steps at start of tracking session
 
   // Fetch today's goal and connection status
   const fetchDailyData = useCallback(async () => {
@@ -66,6 +119,7 @@ export function useStepTracking() {
 
       if (existingGoal) {
         setDailyGoal(existingGoal as DailyGoal);
+        baseStepsRef.current = existingGoal.steps_completed;
         setStepData(prev => ({
           ...prev,
           steps: existingGoal.steps_completed,
@@ -87,6 +141,7 @@ export function useStepTracking() {
 
         if (newGoal) {
           setDailyGoal(newGoal as DailyGoal);
+          baseStepsRef.current = 0;
         }
       }
 
@@ -115,23 +170,15 @@ export function useStepTracking() {
     fetchDailyData();
   }, [fetchDailyData]);
 
-  // Device Motion step detection (fallback)
+  // Device Motion step detection with improved algorithm
   const handleMotion = useCallback((event: DeviceMotionEvent) => {
     const accel = event.accelerationIncludingGravity;
-    if (!accel || !accel.x || !accel.y || !accel.z) return;
+    if (!accel || accel.x === null || accel.y === null || accel.z === null) return;
 
     const { x, y, z } = accel;
-    const lastAccel = lastAccelRef.current;
     
-    // Calculate acceleration magnitude change
-    const deltaX = Math.abs(x - lastAccel.x);
-    const deltaY = Math.abs(y - lastAccel.y);
-    const deltaZ = Math.abs(z - lastAccel.z);
-    const magnitude = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-
-    // Step detection threshold
-    if (magnitude > stepThreshold) {
-      stepCountRef.current += 1;
+    // Use step detector for noise-filtered detection
+    if (stepDetectorRef.current.detectStep(x, y, z)) {
       setStepData(prev => {
         const newSteps = prev.steps + 1;
         return {
@@ -141,8 +188,6 @@ export function useStepTracking() {
         };
       });
     }
-
-    lastAccelRef.current = { x, y, z };
   }, []);
 
   // Start device motion tracking
@@ -166,17 +211,22 @@ export function useStepTracking() {
       }
     }
 
+    // Reset detector for new session
+    stepDetectorRef.current.reset();
+    baseStepsRef.current = stepData.steps;
+
     window.addEventListener('devicemotion', handleMotion);
     setIsTracking(true);
     setStepData(prev => ({ ...prev, source: 'device_motion' }));
-    toast.success('Step tracking started!');
+    toast.success('Step tracking started! Walk around to count steps.');
     return true;
-  }, [handleMotion]);
+  }, [handleMotion, stepData.steps]);
 
   // Stop device motion tracking
   const stopDeviceMotionTracking = useCallback(() => {
     window.removeEventListener('devicemotion', handleMotion);
     setIsTracking(false);
+    stepDetectorRef.current.reset();
   }, [handleMotion]);
 
   // Save step count to database
@@ -190,14 +240,17 @@ export function useStepTracking() {
         .update({ steps_completed: stepData.steps })
         .eq('id', dailyGoal.id);
 
-      // Log to step_logs
-      await supabase
-        .from('step_logs')
-        .insert({
-          user_id: user.id,
-          steps: stepData.steps,
-          source: stepData.source,
-        });
+      // Log to step_logs if there's a change
+      if (stepData.steps > baseStepsRef.current) {
+        await supabase
+          .from('step_logs')
+          .insert({
+            user_id: user.id,
+            steps: stepData.steps - baseStepsRef.current,
+            source: stepData.source,
+          });
+        baseStepsRef.current = stepData.steps;
+      }
 
       toast.success('Steps saved!');
     } catch (err) {
@@ -245,21 +298,36 @@ export function useStepTracking() {
         .from('daily_goals')
         .update({ steps_completed: newTotal })
         .eq('id', dailyGoal.id);
+
+      // Log manual entry
+      await supabase
+        .from('step_logs')
+        .insert({
+          user_id: user.id,
+          steps: steps,
+          source: 'manual',
+        });
     }
+
+    toast.success(`Added ${steps.toLocaleString()} steps`);
   }, [user, stepData.steps, dailyGoal]);
 
-  // Connect to Google Fit (placeholder - requires OAuth setup)
+  // Connect to Google Fit (requires OAuth setup)
   const connectGoogleFit = useCallback(async () => {
     if (!user) return;
 
-    // For now, create a placeholder connection
-    // Full OAuth implementation would require Google Cloud setup
+    // Note: Full Google Fit OAuth requires:
+    // 1. Google Cloud project with Fitness API enabled
+    // 2. OAuth consent screen configured
+    // 3. OAuth client credentials
+    // For now, we create a placeholder and use device motion
+
     const { error } = await supabase
       .from('fitness_connections')
       .upsert({
         user_id: user.id,
         provider: 'google_fit',
-        is_connected: false, // Will be true after OAuth flow
+        is_connected: false,
       }, { onConflict: 'user_id' });
 
     if (error) {
@@ -267,11 +335,36 @@ export function useStepTracking() {
       return;
     }
 
-    toast.info('Google Fit integration coming soon! Using device motion for now.');
+    setFitnessConnection({
+      id: '',
+      user_id: user.id,
+      provider: 'google_fit',
+      is_connected: false,
+      last_sync_at: null,
+    });
+
+    toast.info(
+      'Google Fit requires OAuth setup. For now, use the step tracker with your device\'s motion sensor.',
+      { duration: 5000 }
+    );
     
-    // Fall back to device motion
+    // Offer to start device motion tracking
     await startDeviceMotionTracking();
   }, [user, startDeviceMotionTracking]);
+
+  // Disconnect Google Fit
+  const disconnectGoogleFit = useCallback(async () => {
+    if (!user) return;
+
+    await supabase
+      .from('fitness_connections')
+      .delete()
+      .eq('user_id', user.id);
+
+    setFitnessConnection(null);
+    setStepData(prev => ({ ...prev, source: 'manual' }));
+    toast.success('Disconnected from Google Fit');
+  }, [user]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -280,7 +373,7 @@ export function useStepTracking() {
     };
   }, [handleMotion]);
 
-  // Auto-save steps periodically
+  // Auto-save steps periodically when tracking
   useEffect(() => {
     if (!isTracking) return;
 
@@ -303,6 +396,7 @@ export function useStepTracking() {
     updateStepGoal,
     addManualSteps,
     connectGoogleFit,
+    disconnectGoogleFit,
     refetch: fetchDailyData,
   };
 }

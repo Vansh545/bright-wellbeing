@@ -255,15 +255,16 @@ export function StepTracker() {
           </Dialog>
         </div>
 
-        {/* Google Fit connection */}
-        <Button
-          variant="outline"
-          onClick={connectGoogleFit}
-          className="w-full gap-2 border-dashed"
-        >
-          <ActivityIcon className="h-4 w-4" />
-          Connect Google Fit
-        </Button>
+        {/* Google Fit connection info */}
+        <div className="p-4 bg-muted/50 rounded-xl text-center space-y-2">
+          <p className="text-sm font-medium">Real Step Tracking</p>
+          <p className="text-xs text-muted-foreground">
+            Start tracking to use your device's motion sensor. For best results, keep your phone in your pocket while walking.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Google Fit integration requires additional OAuth setup. Use device motion or add steps manually.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
