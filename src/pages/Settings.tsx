@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Settings as SettingsIcon,
   User,
-  Bell,
   Shield,
   Download,
   Trash2,
@@ -11,10 +10,11 @@ import {
   Sun,
   HelpCircle,
   Info,
-  Key,
   LogOut,
   ChevronRight,
   Check,
+  Camera,
+  Loader2,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { supabase } from "@/integrations/supabase/client";
 import { ApiKeySettings } from "@/components/settings/ApiKeySettings";
 import { AuthProviderSettings } from "@/components/settings/AuthProviderSettings";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
@@ -56,20 +60,48 @@ const itemVariants = {
 
 export default function Settings() {
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
+  const { profile } = useUserProfile();
+  
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [notifications, setNotifications] = useState({
-    workoutReminders: true,
-    skincareReminders: true,
-    weeklyReport: true,
-    aiInsights: true,
-    appUpdates: false,
-  });
-  const [profile, setProfile] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
+  const [isUploading, setIsUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    email: "",
     phone: "",
   });
+
+  // Initialize form with user data
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        name: user.user_metadata?.full_name || user.user_metadata?.name || "",
+        email: user.email || "",
+        phone: user.user_metadata?.phone || "",
+      });
+      setAvatarUrl(user.user_metadata?.avatar_url || null);
+    }
+  }, [user]);
+
+  // Get user initials
+  const getInitials = () => {
+    if (profileForm.name) {
+      return profileForm.name
+        .split(" ")
+        .map(n => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    if (profileForm.email) {
+      return profileForm.email.slice(0, 2).toUpperCase();
+    }
+    return "U";
+  };
 
   const handleToggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
@@ -93,13 +125,114 @@ export default function Settings() {
     });
   };
 
-  const handleSave = () => {
-    setSaveSuccess(true);
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Create a data URL for immediate preview
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target?.result as string;
+        setAvatarUrl(dataUrl);
+
+        // Update user metadata with the new avatar
+        const { error } = await supabase.auth.updateUser({
+          data: { 
+            avatar_url: dataUrl,
+            updated_at: new Date().toISOString(),
+          }
+        });
+
+        if (error) {
+          toast({
+            title: "Upload failed",
+            description: "Could not update your profile photo.",
+            variant: "destructive",
+          });
+          setAvatarUrl(user.user_metadata?.avatar_url || null);
+        } else {
+          toast({
+            title: "Photo updated",
+            description: "Your profile photo has been updated.",
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      toast({
+        title: "Upload failed",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { 
+          full_name: profileForm.name,
+          phone: profileForm.phone,
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Save failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSaveSuccess(true);
+      toast({
+        title: "Changes saved",
+        description: "Your profile has been updated successfully.",
+      });
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Save failed",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
     toast({
-      title: "Changes saved",
-      description: "Your profile has been updated successfully.",
+      title: "Signed out",
+      description: "You have been successfully signed out.",
     });
-    setTimeout(() => setSaveSuccess(false), 2000);
   };
 
   return (
@@ -146,18 +279,39 @@ export default function Settings() {
                 className="flex items-center gap-4"
                 whileHover={{ scale: 1.01 }}
               >
-                <motion.div 
-                  className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center"
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                >
-                  <span className="text-xl font-bold text-primary">JD</span>
-                </motion.div>
-                <div>
+                <div className="relative">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={avatarUrl || undefined} alt={profileForm.name} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
+                      {getInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {isUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-full">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                  />
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Button variant="outline" size="sm">
-                      Change Photo
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      {isUploading ? "Uploading..." : "Change Photo"}
                     </Button>
                   </motion.div>
+                  <p className="text-xs text-muted-foreground">JPG, PNG. Max 5MB.</p>
                 </div>
               </motion.div>
               <Separator />
@@ -169,8 +323,9 @@ export default function Settings() {
                 >
                   <Label>Full Name</Label>
                   <Input
-                    value={profile.name}
-                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                    placeholder="Enter your name"
                     className="input-focus"
                   />
                 </motion.div>
@@ -182,10 +337,11 @@ export default function Settings() {
                   <Label>Email</Label>
                   <Input
                     type="email"
-                    value={profile.email}
-                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                    className="input-focus"
+                    value={profileForm.email}
+                    disabled
+                    className="input-focus bg-muted"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Email cannot be changed</p>
                 </motion.div>
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
@@ -196,8 +352,8 @@ export default function Settings() {
                   <Input
                     type="tel"
                     placeholder="+1 (555) 000-0000"
-                    value={profile.phone}
-                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                     className="input-focus"
                   />
                 </motion.div>
@@ -256,9 +412,6 @@ export default function Settings() {
                 <div className="flex items-center gap-3">
                   <motion.div 
                     className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center"
-                    animate={{ 
-                      backgroundColor: isDarkMode ? "hsl(var(--muted))" : "hsl(var(--muted))",
-                    }}
                   >
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -448,7 +601,11 @@ export default function Settings() {
               </div>
               <Separator />
               <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                <Button variant="ghost" className="w-full text-destructive hover:text-destructive">
+                <Button 
+                  variant="ghost" 
+                  className="w-full text-destructive hover:text-destructive"
+                  onClick={handleSignOut}
+                >
                   <LogOut className="h-4 w-4" />
                   Sign Out
                 </Button>

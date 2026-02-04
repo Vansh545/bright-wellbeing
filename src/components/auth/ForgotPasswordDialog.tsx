@@ -42,7 +42,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth?reset=true`,
+        redirectTo: `${window.location.origin}/auth/reset-password`,
       });
 
       if (resetError) {

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,6 +34,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Rate limiting: Check how many OTPs were sent in the last 5 minutes
@@ -61,7 +64,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Invalidate previous OTPs for this email
     await supabase
       .from("otp_verifications")
-      .update({ verified: true }) // Mark as used so they can't be reused
+      .update({ verified: true })
       .eq("email", email.toLowerCase())
       .eq("verified", false);
 
@@ -88,37 +91,68 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Send email using Lovable AI (simulated email - in production would use actual email service)
-    // For now, we'll use the built-in Supabase auth magic link as fallback
-    // In a real implementation, you'd integrate Resend, SendGrid, etc.
-    
-    // For demo purposes, we'll log the OTP and return success
-    // In production, this would send an actual email
+    // Log OTP for debugging (remove in production)
     console.log(`OTP for ${email}: ${otpCode}`);
 
-    // Use Supabase's built-in email to send the OTP
-    const { error: authError } = await supabase.auth.admin.generateLink({
-      type: "magiclink",
-      email: email.toLowerCase(),
-      options: {
-        data: {
-          otp_code: otpCode,
-        },
-      },
-    });
+    // Send email using Resend if API key is available
+    if (resendApiKey) {
+      try {
+        const resend = new Resend(resendApiKey);
+        
+        const emailResult = await resend.emails.send({
+          from: "Health Hub <onboarding@resend.dev>",
+          to: [email.toLowerCase()],
+          subject: "Your Health Hub Verification Code",
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px; background-color: #f5f5f5;">
+              <div style="max-width: 400px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #10b981, #06b6d4); border-radius: 16px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 28px;">💚</span>
+                  </div>
+                  <h1 style="margin: 0; font-size: 24px; color: #1f2937;">Verify your email</h1>
+                </div>
+                
+                <p style="color: #6b7280; text-align: center; margin-bottom: 30px;">
+                  Enter this code to complete your Health Hub registration:
+                </p>
+                
+                <div style="background: linear-gradient(135deg, #10b981, #06b6d4); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 30px;">
+                  <span style="font-size: 36px; font-weight: bold; color: white; letter-spacing: 8px;">${otpCode}</span>
+                </div>
+                
+                <p style="color: #9ca3af; font-size: 14px; text-align: center; margin-bottom: 20px;">
+                  This code expires in 10 minutes.
+                </p>
+                
+                <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+                  If you didn't request this code, you can safely ignore this email.
+                </p>
+              </div>
+            </body>
+            </html>
+          `,
+        });
 
-    // Even if magic link fails, we still have the OTP stored
-    if (authError) {
-      console.log("Magic link generation failed, but OTP is stored:", authError.message);
+        console.log("Email sent successfully:", emailResult);
+      } catch (emailError) {
+        console.error("Failed to send email via Resend:", emailError);
+        // Continue anyway - OTP is stored and can be verified
+      }
+    } else {
+      console.log("RESEND_API_KEY not configured, OTP stored but email not sent");
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: "Verification code sent to your email",
-        // In development/testing, return the OTP for easier testing
-        // Remove this in production!
-        ...(Deno.env.get("ENVIRONMENT") === "development" ? { otp: otpCode } : {})
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

@@ -53,12 +53,8 @@ const motivationalQuotes = [
   "Wellness is the complete integration of body, mind, and spirit.",
 ];
 
-const todaySchedule = [
-  { time: "7:00 AM", task: "Morning stretch routine", completed: true },
-  { time: "12:00 PM", task: "Midday skincare check", completed: true },
-  { time: "5:00 PM", task: "Evening workout", completed: false },
-  { time: "9:00 PM", task: "Night skincare routine", completed: false },
-];
+// Schedule will be dynamically generated based on user activities
+// No hardcoded fake data
 
 export default function Dashboard() {
   const [greeting, setGreeting] = useState("Good morning");
@@ -131,11 +127,17 @@ export default function Dashboard() {
   const longestStreak = streak?.longest_streak || 0;
   const userName = profile?.gender === 'male' ? 'there' : profile?.gender === 'female' ? 'there' : 'there';
 
+  // Real data only - all metrics start at actual values (zero for new users)
+  const waterIntake = 0; // Will be tracked when water logging is implemented
+  const waterGoal = 8;
+  const activeMinutesGoal = 60;
+  const caloriesGoal = 2200;
+
   const quickStats = [
     { label: "Steps Today", value: stepData.steps.toLocaleString(), target: stepData.goalSteps.toLocaleString(), icon: Footprints, color: "health-teal", progress: stepData.percentage },
-    { label: "Water Intake", value: "6", target: "8 glasses", icon: Droplets, color: "health-blue", progress: 75 },
-    { label: "Active Minutes", value: String(weeklyStats.totalMinutes), target: "60 min", icon: Timer, color: "health-coral", progress: Math.min(100, (weeklyStats.totalMinutes / 60) * 100) },
-    { label: "Calories", value: weeklyStats.totalCalories.toLocaleString(), target: "2,200", icon: Flame, color: "health-purple", progress: Math.min(100, (weeklyStats.totalCalories / 2200) * 100) },
+    { label: "Water Intake", value: String(waterIntake), target: `${waterGoal} glasses`, icon: Droplets, color: "health-blue", progress: (waterIntake / waterGoal) * 100 },
+    { label: "Active Minutes", value: String(weeklyStats.totalMinutes), target: `${activeMinutesGoal} min`, icon: Timer, color: "health-coral", progress: Math.min(100, (weeklyStats.totalMinutes / activeMinutesGoal) * 100) },
+    { label: "Calories", value: weeklyStats.totalCalories.toLocaleString(), target: caloriesGoal.toLocaleString(), icon: Flame, color: "health-purple", progress: Math.min(100, (weeklyStats.totalCalories / caloriesGoal) * 100) },
   ];
 
   // Get recent activities from real data
@@ -380,7 +382,7 @@ export default function Dashboard() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Today's Schedule */}
+          {/* Today's Goals */}
           <motion.div variants={itemVariants} className="lg:col-span-1">
             <Card className="h-full card-elevated">
               <CardHeader className="pb-4">
@@ -388,43 +390,62 @@ export default function Dashboard() {
                   <div className="h-8 w-8 rounded-xl gradient-bg flex items-center justify-center">
                     <Clock className="h-4 w-4 text-primary-foreground" />
                   </div>
-                  Today's Schedule
+                  Today's Goals
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {todaySchedule.map((item, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${
-                      item.completed
-                        ? "bg-health-green-light border border-health-green/20"
-                        : "bg-muted/50 border border-border/50 hover:bg-muted"
-                    }`}
-                  >
-                    <div
-                      className={`h-4 w-4 rounded-full flex-shrink-0 transition-all ${
-                        item.completed
-                          ? "bg-health-green shadow-md"
-                          : "border-2 border-muted-foreground/30"
+                {weeklyStats.totalWorkouts > 0 || stepData.steps > 0 ? (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${
+                        stepData.percentage >= 100
+                          ? "bg-health-green-light border border-health-green/20"
+                          : "bg-muted/50 border border-border/50"
                       }`}
                     >
-                      {item.completed && (
-                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
+                      <div className={`h-4 w-4 rounded-full flex-shrink-0 ${
+                        stepData.percentage >= 100 ? "bg-health-green" : "border-2 border-muted-foreground/30"
+                      }`} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Daily Step Goal</p>
+                        <p className="text-xs text-muted-foreground">{stepData.steps.toLocaleString()} / {stepData.goalSteps.toLocaleString()} steps</p>
+                      </div>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${
+                        weeklyStats.totalWorkouts >= 1
+                          ? "bg-health-green-light border border-health-green/20"
+                          : "bg-muted/50 border border-border/50"
+                      }`}
+                    >
+                      <div className={`h-4 w-4 rounded-full flex-shrink-0 ${
+                        weeklyStats.totalWorkouts >= 1 ? "bg-health-green" : "border-2 border-muted-foreground/30"
+                      }`} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Log a Workout</p>
+                        <p className="text-xs text-muted-foreground">{weeklyStats.totalWorkouts > 0 ? `${weeklyStats.totalWorkouts} this week` : 'Not started'}</p>
+                      </div>
+                    </motion.div>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                      <Target className="h-6 w-6 text-muted-foreground" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${item.completed ? "text-health-green" : "text-foreground"}`}>
-                        {item.task}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{item.time}</p>
-                    </div>
-                  </motion.div>
-                ))}
+                    <p className="text-muted-foreground text-sm">Start your wellness journey</p>
+                    <p className="text-xs text-muted-foreground mt-1">Log an activity to see your goals</p>
+                    <Link to="/fitness">
+                      <Button variant="link" size="sm" className="mt-2">
+                        Get started →
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
